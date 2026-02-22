@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-blueprint-bg text-white;
+  }
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+.blueprint-bg {
+  background-color: #0a1628;
+  background-image: 
+    linear-gradient(to right, #1a3a5c 1px, transparent 1px),
+    linear-gradient(to bottom, #1a3a5c 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.card {
+  @apply bg-blueprint-paper/50 border border-blueprint-grid p-4;
+}
+
+.btn-primary {
+  @apply bg-safety-yellow text-black font-semibold px-4 py-2 hover:bg-safety-yellow/90;
+}
+
+.btn-secondary {
+  @apply bg-blueprint-paper text-white font-semibold px-4 py-2 border border-neon-cyan/30 hover:border-neon-cyan;
+}
+
+.tag {
+  @apply inline-block bg-blueprint-paper text-neon-cyan text-xs font-mono px-2 py-0.5;
+}
+
+.badge-safe { @apply bg-safety-green text-black font-semibold px-2 py-0.5 text-xs; }
+.badge-warning { @apply bg-safety-orange text-black font-semibold px-2 py-0.5 text-xs; }

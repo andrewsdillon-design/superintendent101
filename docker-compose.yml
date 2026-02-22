@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://super101:super101@db:5432/super101
+      - NEXTAUTH_URL=http://localhost:3001
+      - NEXTAUTH_SECRET=dev-secret-change-me
+    depends_on:
+      - db
+    volumes:
+      - ./uploads:/app/uploads
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: super101
+      POSTGRES_PASSWORD: super101
+      POSTGRES_DB: super101
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
