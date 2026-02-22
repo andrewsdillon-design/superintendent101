@@ -1,0 +1,134 @@
+// Superintendent101 Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String?
+  name          String?
+  avatarUrl     String?
+  bio           String?
+  location      String?
+  skills        String[]
+  yearsExperience Int?
+  role          Role      @default(MEMBER)
+  isMentor      Boolean   @default(false)
+  mentorBio     String?
+  hourlyRate    Decimal?
+  subscription  Subscription @default(FREE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  projects      Project[]
+  posts         Post[]
+  comments      Comment[]
+  messagesSent    Message[] @relation("SentMessages")
+  messagesReceived Message[] @relation("ReceivedMessages")
+  bookings      Booking[] @relation("MentorBookings")
+  audioLogs     AudioLog[]
+}
+
+enum Role { MEMBER, MENTOR, ADMIN }
+enum Subscription { FREE, PRO, DUST_LOGS }
+
+model Project {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  location      String?
+  type          String?
+  sqft          Int?
+  status        ProjectStatus @default(ACTIVE)
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+enum ProjectStatus { PLANNING, ACTIVE, COMPLETED, ON_HOLD }
+
+model Post {
+  id          String    @id @default(cuid())
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content     String    @db.Text
+  tags        String[]
+  type        PostType  @default(DISCUSSION)
+  viewCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  comments    Comment[]
+  likes       Like[]
+}
+
+enum PostType { DISCUSSION, LESSON_LEARNED, SAFETY_OBSERVATION, TIP, STORY }
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([userId, postId])
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content     String    @db.Text
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  mentorId      String
+  mentor        User          @relation("MentorBookings", fields: [mentorId], references: [id])
+  clientId      String
+  scheduledAt   DateTime
+  durationMinutes Int         @default(60)
+  notes         String?
+  hourlyRate    Decimal
+  totalPrice    Decimal
+  status        BookingStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+}
+
+enum BookingStatus { PENDING, CONFIRMED, COMPLETED, CANCELLED }
+
+model AudioLog {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audioUrl      String
+  transcript    String?       @db.Text
+  status        TranscriptionStatus @default(PENDING)
+  projectName   String?
+  address       String?
+  tags          String[]
+  createdAt     DateTime      @default(now())
+}
+
+enum TranscriptionStatus { PENDING, PROCESSING, COMPLETED, FAILED }
