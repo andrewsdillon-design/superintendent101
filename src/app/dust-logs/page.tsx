@@ -1,26 +1,56 @@
-import Link from 'next/link'
+'use client'
 
-const sampleLogs = [
-  { id: '1', project: 'Target Store #2847', address: '1234 Main St, Columbus, OH', date: '2026-02-21', duration: '4:32', status: 'COMPLETED' },
-  { id: '2', project: 'Walmart DC', address: '5678 Industrial Blvd, Phoenix, AZ', date: '2026-02-20', duration: '6:15', status: 'COMPLETED' },
-  { id: '3', project: 'Apartment Phase 2', address: '900 Oak Ave, Austin, TX', date: '2026-02-21', duration: '3:48', status: 'PROCESSING' },
-]
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { signOut } from 'next-auth/react'
+
+interface DustLog {
+  id: string
+  projectName: string
+  address: string
+  date: string
+  duration: number
+  status: string
+  tags: string[]
+}
+
+function formatDuration(mins: number) {
+  if (!mins) return '—'
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
 
 export default function DustLogsPage() {
+  const [logs, setLogs] = useState<DustLog[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/dust-logs')
+      .then(r => r.json())
+      .then(d => { setLogs(d.logs || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
   return (
     <div className="min-h-screen blueprint-bg">
-      <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0">
+      <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
             <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">S101</Link>
             <nav className="hidden md:flex gap-4 text-sm">
-              <Link href="/dashboard" className="text-gray-400">Feed</Link>
-              <Link href="/mentors" className="text-gray-400">Mentors</Link>
-              <Link href="/projects" className="text-gray-400">Projects</Link>
+              <Link href="/dashboard" className="text-gray-400 hover:text-white">Feed</Link>
+              <Link href="/mentors" className="text-gray-400 hover:text-white">Mentors</Link>
+              <Link href="/projects" className="text-gray-400 hover:text-white">Projects</Link>
               <Link href="/dust-logs" className="text-white font-semibold">Dust Logs</Link>
             </nav>
           </div>
-          <Link href="/profile" className="text-sm text-gray-400">Profile</Link>
+          <div className="flex items-center gap-4">
+            <Link href="/profile" className="text-sm text-gray-400 hover:text-white">Profile</Link>
+            <button onClick={() => signOut({ callbackUrl: '/' })} className="text-sm text-gray-400 hover:text-white">
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -28,65 +58,99 @@ export default function DustLogsPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold text-safety-green">DUST LOGS</h1>
-            <p className="text-gray-400 mt-2">Voice-to-text daily logs. AI-processed with field rules.</p>
+            <p className="text-gray-400 mt-2">Voice-to-text daily field logs. AI-structured. Privacy-first.</p>
           </div>
           <Link href="/dust-logs/new" className="btn-primary">+ New Log</Link>
         </div>
 
         <div className="card mb-6 font-mono text-sm text-neon-green bg-black/50 border border-neon-green/30">
-          <p className="text-neon-cyan">FIELD AI OPERATING RULES</p>
-          <p className="mt-2">• Context is king • No corporate fluff • Safety &gt; schedule • Document like it may be used in court</p>
+          <p className="text-neon-cyan font-bold">FIELD AI OPERATING RULES</p>
+          <p className="mt-2 text-xs">
+            Context is king &nbsp;•&nbsp; No corporate fluff &nbsp;•&nbsp; Safety overrides everything &nbsp;•&nbsp;
+            Document like it may be used in court &nbsp;•&nbsp; Walk the site — if it&apos;s not logged, it didn&apos;t happen
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 mb-6">
           <div className="card flex justify-between items-center">
             <div>
-              <p className="font-semibold">Notion Integration</p>
-              <p className="text-sm text-gray-500">Sync logs to your workspace</p>
+              <p className="font-semibold text-sm">Notion Integration</p>
+              <p className="text-xs text-gray-500">Sync logs to your workspace</p>
             </div>
-            <span className="badge-warning">Not Connected</span>
+            <div className="flex items-center gap-2">
+              <span className="badge-warning text-xs">Not Connected</span>
+              <Link href="/profile" className="text-xs text-neon-cyan hover:underline">Set up →</Link>
+            </div>
           </div>
           <div className="card flex justify-between items-center">
             <div>
-              <p className="font-semibold">Google NotebookLM</p>
-              <p className="text-sm text-gray-500">AI-powered analysis</p>
+              <p className="font-semibold text-sm">Google NotebookLM</p>
+              <p className="text-xs text-gray-500">AI-powered field log analysis</p>
             </div>
-            <span className="badge-warning">Not Connected</span>
+            <div className="flex items-center gap-2">
+              <span className="badge-warning text-xs">Not Connected</span>
+              <Link href="/profile" className="text-xs text-neon-cyan hover:underline">Set up →</Link>
+            </div>
           </div>
         </div>
 
         <div className="space-y-4">
-          {sampleLogs.map((log) => (
-            <div key={log.id} className="card">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{log.project}</h3>
-                    <span className={log.status === 'COMPLETED' ? 'badge-safe' : 'badge-warning'}>{log.status}</span>
+          {loading ? (
+            <div className="card text-center text-gray-400 py-8">Loading logs...</div>
+          ) : logs.length === 0 ? (
+            <div className="card text-center py-8">
+              <p className="text-gray-400 mb-4">No logs yet.</p>
+              <Link href="/dust-logs/new" className="btn-primary text-sm">Create Your First Log</Link>
+            </div>
+          ) : (
+            logs.map(log => (
+              <div key={log.id} className="card">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold">{log.projectName}</h3>
+                      <span className={log.status === 'COMPLETED' ? 'badge-safe' : log.status === 'PROCESSING' ? 'badge-warning' : 'text-xs text-gray-500 border border-gray-500 px-1'}>
+                        {log.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {log.address && `${log.address} • `}{log.date}
+                      {log.duration ? ` • ${formatDuration(log.duration)}` : ''}
+                    </p>
+                    {log.tags?.length > 0 && (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {log.tags.map(t => <span key={t} className="tag">{t}</span>)}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">{log.address} • {log.date} • {log.duration}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button className="btn-secondary text-sm">View</button>
-                  {log.status === 'COMPLETED' && <button className="btn-primary text-sm">Export</button>}
+                  <div className="flex gap-2 ml-4">
+                    <button className="btn-secondary text-xs px-3 py-1">View</button>
+                    {log.status === 'COMPLETED' && (
+                      <button className="btn-primary text-xs px-3 py-1">Export</button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <div className="mt-8 grid md:grid-cols-3 gap-4">
           <div className="card text-center">
-            <p className="text-3xl font-bold text-neon-cyan">24</p>
-            <p className="text-sm text-gray-400">Logs This Month</p>
+            <p className="text-3xl font-bold text-neon-cyan">{logs.length}</p>
+            <p className="text-sm text-gray-400">Total Logs</p>
           </div>
           <div className="card text-center">
-            <p className="text-3xl font-bold text-safety-green">2.5h</p>
+            <p className="text-3xl font-bold text-safety-green">
+              {Math.round(logs.reduce((sum, l) => sum + (l.duration || 0), 0) / 60 * 10) / 10}h
+            </p>
             <p className="text-sm text-gray-400">Audio Processed</p>
           </div>
           <div className="card text-center">
-            <p className="text-3xl font-bold text-safety-yellow">58 min</p>
-            <p className="text-sm text-gray-400">Free Tier Remaining</p>
+            <Link href="/upgrade" className="block">
+              <p className="text-3xl font-bold text-safety-yellow">$50/mo</p>
+              <p className="text-sm text-gray-400">for full AI pipeline</p>
+            </Link>
           </div>
         </div>
       </main>

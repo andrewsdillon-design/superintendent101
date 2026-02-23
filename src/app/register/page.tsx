@@ -1,6 +1,54 @@
+'use client'
+
 import Link from 'next/link'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function RegisterPage() {
+  const router = useRouter()
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    username: '',
+    password: '',
+    skills: '',
+    yearsExperience: '',
+  })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+
+    setLoading(true)
+
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+
+    const data = await res.json()
+    setLoading(false)
+
+    if (!res.ok) {
+      setError(data.error || 'Registration failed')
+    } else {
+      router.push('/login?registered=1')
+    }
+  }
+
   return (
     <div className="min-h-screen blueprint-bg flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
@@ -13,44 +61,112 @@ export default function RegisterPage() {
 
         <div className="card">
           <h2 className="font-display text-xl font-bold mb-6 text-center">Create Account</h2>
-          
-          <form className="space-y-4">
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-900/40 border border-red-500 text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-gray-400 uppercase">First Name</label>
-                <input type="text" className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1" placeholder="John" />
+                <input
+                  type="text"
+                  name="firstName"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1 focus:outline-none focus:border-neon-cyan"
+                  placeholder="John"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-400 uppercase">Last Name</label>
-                <input type="text" className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1" placeholder="Smith" />
+                <input
+                  type="text"
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1 focus:outline-none focus:border-neon-cyan"
+                  placeholder="Smith"
+                />
               </div>
             </div>
             <div>
               <label className="text-xs text-gray-400 uppercase">Email</label>
-              <input type="email" className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1" placeholder="you@company.com" />
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1 focus:outline-none focus:border-neon-cyan"
+                placeholder="you@company.com"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-400 uppercase">Username</label>
-              <input type="text" className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1" placeholder="johnsmith" />
+              <input
+                type="text"
+                name="username"
+                value={form.username}
+                onChange={handleChange}
+                required
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1 focus:outline-none focus:border-neon-cyan"
+                placeholder="johnsmith"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-400 uppercase">Password</label>
-              <input type="password" className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1" placeholder="••••••••" />
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1 focus:outline-none focus:border-neon-cyan"
+                placeholder="Min. 8 characters"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-400 uppercase">Skills (comma separated)</label>
-              <input type="text" className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1" placeholder="superintendent, project-manager, concrete" />
+              <input
+                type="text"
+                name="skills"
+                value={form.skills}
+                onChange={handleChange}
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1 focus:outline-none focus:border-neon-cyan"
+                placeholder="superintendent, concrete, scheduling"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-400 uppercase">Years of Experience</label>
-              <input type="number" className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1" placeholder="10" />
+              <input
+                type="number"
+                name="yearsExperience"
+                value={form.yearsExperience}
+                onChange={handleChange}
+                min="0"
+                max="60"
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white mt-1 focus:outline-none focus:border-neon-cyan"
+                placeholder="10"
+              />
             </div>
-            <button type="submit" className="btn-primary w-full">Create Account</button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </button>
           </form>
 
           <div className="mt-6 text-center text-gray-400 text-sm">
             Already have an account?{' '}
-            <Link href="/login" className="text-neon-cyan hover:underline">Sign In</Link>
+            <Link href="/login" className="text-neon-cyan hover:underline">
+              Sign In
+            </Link>
           </div>
         </div>
       </div>
