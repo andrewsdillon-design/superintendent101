@@ -3,8 +3,35 @@ import { getServerSession } from 'next-auth'
 import OpenAI from 'openai'
 import { toFile } from 'openai'
 
-// Zero-storage transcription pipeline
-// Audio is streamed to Whisper, transcript returned, audio never written to disk
+// Whisper supports: mp3, mp4, mpeg, mpga, m4a, wav, webm, ogg, flac
+const ALLOWED_TYPES: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/webm': 'webm',
+  'audio/ogg': 'ogg',
+  'audio/flac': 'flac',
+  'audio/x-flac': 'flac',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/mpeg': 'mpeg',
+  'video/quicktime': 'mp4',
+}
+
+const MAX_BYTES = 25 * 1024 * 1024 // 25MB — Whisper hard limit
+
+function resolveExtension(file: File): string {
+  if (ALLOWED_TYPES[file.type]) return ALLOWED_TYPES[file.type]
+  // Fall back to filename extension
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  const validExts = ['mp3', 'mp4', 'm4a', 'wav', 'webm', 'ogg', 'flac', 'mpeg', 'mpga']
+  return validExts.includes(ext || '') ? ext! : 'webm'
+}
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession()
@@ -26,42 +53,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid form data' }, { status: 400 })
   }
 
-  const audioFile = formData.get('audio') as File | null
+  // Accept field named 'audio' (recorder) or 'file' (drop upload)
+  const audioFile = (formData.get('audio') ?? formData.get('file')) as File | null
   if (!audioFile) {
     return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
   }
 
-  const maxBytes = 25 * 1024 * 1024 // 25MB Whisper limit
-  if (audioFile.size > maxBytes) {
-    return NextResponse.json({ error: 'Audio file too large (max 25MB)' }, { status: 400 })
+  if (audioFile.size === 0) {
+    return NextResponse.json({ error: 'File is empty' }, { status: 400 })
   }
+
+  if (audioFile.size > MAX_BYTES) {
+    const mb = (audioFile.size / 1024 / 1024).toFixed(1)
+    return NextResponse.json(
+      { error: `File too large (${mb}MB). Whisper limit is 25MB. Compress or split the audio.` },
+      { status: 400 }
+    )
+  }
+
+  const ext = resolveExtension(audioFile)
+  const fileName = `field-log.${ext}`
 
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-    // Convert File to format OpenAI accepts — never written to disk
+    // Buffer in-memory — never written to disk
     const audioBuffer = Buffer.from(await audioFile.arrayBuffer())
-    const whisperFile = await toFile(audioBuffer, audioFile.name || 'audio.webm', {
-      type: audioFile.type || 'audio/webm',
+    const whisperFile = await toFile(audioBuffer, fileName, {
+      type: audioFile.type || `audio/${ext}`,
     })
 
     const transcription = await openai.audio.transcriptions.create({
       file: whisperFile,
       model: 'whisper-1',
       language: 'en',
-      prompt: 'Construction site field log. Superintendent notes. May include technical terms: rebar, pour, slab, footing, CMU, MEP, RFI, submittal, punch list, OSHA.',
+      prompt: 'Construction site field log. Superintendent daily notes. Technical terms: rebar, pour, slab, footing, CMU, MEP, RFI, submittal, punch list, OSHA, GC, subcontractor.',
     })
 
-    // Audio cleared from memory — only return text
     return NextResponse.json({
       transcript: transcription.text,
-      duration: audioFile.size, // approximate
+      fileName: audioFile.name,
+      fileSizeBytes: audioFile.size,
     })
   } catch (err: any) {
     console.error('Whisper error:', err?.message)
-    const msg = err?.status === 401
-      ? 'Invalid OpenAI API key'
-      : err?.message || 'Transcription failed'
+    const msg =
+      err?.status === 401 ? 'Invalid OpenAI API key' :
+      err?.status === 400 ? `Whisper rejected file: ${err.message}` :
+      err?.message || 'Transcription failed'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
