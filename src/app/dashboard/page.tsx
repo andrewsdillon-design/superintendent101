@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import MobileNav from '@/components/MobileNav'
 
 interface Post {
   id: string
@@ -79,7 +80,7 @@ export default function DashboardPage() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/profile" className="text-sm text-gray-400 hover:text-white">
+            <Link href="/profile" className="text-sm text-gray-400 hover:text-white hidden sm:block">
               {userName}
             </Link>
             <button
@@ -92,7 +93,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <h1 className="font-display text-2xl font-bold text-safety-yellow">FEED</h1>
@@ -208,6 +209,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+      <MobileNav />
     </div>
   )
 }

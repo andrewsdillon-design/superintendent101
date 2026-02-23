@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { signOut } from 'next-auth/react'
+import MobileNav from '@/components/MobileNav'
 
 interface DustLog {
   id: string
@@ -54,7 +55,7 @@ export default function DustLogsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold text-safety-green">DUST LOGS</h1>
@@ -154,6 +155,7 @@ export default function DustLogsPage() {
           </div>
         </div>
       </main>
+      <MobileNav />
     </div>
   )
 }

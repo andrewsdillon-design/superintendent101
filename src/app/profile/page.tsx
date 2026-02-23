@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
+import MobileNav from '@/components/MobileNav'
 
 function initials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -43,7 +44,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <h1 className="font-display text-2xl font-bold text-safety-yellow mb-6">MY PROFILE</h1>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -115,6 +116,7 @@ export default function ProfilePage() {
           <p className="text-xs text-gray-500 mt-4">Integrations require Dust Logs tier ($50/mo)</p>
         </div>
       </main>
+      <MobileNav />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import MobileNav from '@/components/MobileNav'
 
 const projects = [
   { id: '1', name: 'Target Store #2847', address: '1234 Main St, Columbus, OH', type: 'Retail', sqft: 45000, status: 'ACTIVE' },
@@ -24,7 +25,7 @@ export default function ProjectsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold text-safety-yellow">PROJECTS</h1>
@@ -75,7 +76,7 @@ export default function ProjectsPage() {
 
         <div className="mt-8 card">
           <h3 className="font-bold text-safety-blue mb-4">PROJECT STATS</h3>
-          <div className="grid grid-cols-4 gap-4 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold text-neon-cyan">12</p>
               <p className="text-xs text-gray-400">Total Projects</p>
@@ -95,6 +96,7 @@ export default function ProjectsPage() {
           </div>
         </div>
       </main>
+      <MobileNav />
     </div>
   )
 }

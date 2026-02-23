@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import MobileNav from '@/components/MobileNav'
 
 const mentors = [
   { id: '1', name: 'Mike Smith', username: 'mikesmith', bio: '25 years in commercial construction. OSHA 500 certified.', skills: ['superintendent', 'safety', 'scheduling'], hourlyRate: 75, location: 'Columbus, OH' },
@@ -25,7 +26,7 @@ export default function MentorsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold text-safety-green">MENTORS</h1>
           <p className="text-gray-400 mt-2">Book 1-on-1 sessions. Pay in USDC. No corporate fluff.</p>
@@ -82,6 +83,7 @@ export default function MentorsPage() {
           ))}
         </div>
       </main>
+      <MobileNav />
     </div>
   )
 }
