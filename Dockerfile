@@ -1,4 +1,6 @@
-FROM node:20-alpine
+FROM node:20-slim
+
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -7,6 +9,12 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 3000
+# Generate Prisma client for this platform
+RUN npx prisma generate
 
-CMD ["npm", "run", "dev"]
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 3001
+
+CMD ["/docker-entrypoint.sh"]
