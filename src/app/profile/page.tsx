@@ -37,12 +37,19 @@ function ProfileContent() {
   const [managingBilling, setManagingBilling] = useState(false)
   const [connectingNotion, setConnectingNotion] = useState(false)
   const [notionConnected, setNotionConnected] = useState(false)
+  const [notionNeedsSetup, setNotionNeedsSetup] = useState(false)
+  const [notionDbInput, setNotionDbInput] = useState('')
+  const [notionDbSaving, setNotionDbSaving] = useState(false)
+  const [notionDbError, setNotionDbError] = useState('')
 
   useEffect(() => {
     if (subscription === 'DUST_LOGS') {
       fetch('/api/integrations/notion')
         .then(r => r.json())
-        .then(d => setNotionConnected(d.connected ?? false))
+        .then(d => {
+          setNotionConnected(d.connected ?? false)
+          setNotionNeedsSetup(d.needsSetup ?? false)
+        })
         .catch(() => {})
     }
   }, [subscription])
@@ -68,6 +75,31 @@ function ProfileContent() {
     if (!confirm('Disconnect Notion? Your existing logs will stay in Notion but new ones won\'t sync.')) return
     await fetch('/api/integrations/notion', { method: 'DELETE' })
     setNotionConnected(false)
+    setNotionNeedsSetup(false)
+  }
+
+  const handleSaveNotionDb = async () => {
+    setNotionDbSaving(true)
+    setNotionDbError('')
+    try {
+      const res = await fetch('/api/integrations/notion', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ databaseId: notionDbInput }),
+      })
+      const data = await res.json()
+      if (data.connected) {
+        setNotionConnected(true)
+        setNotionNeedsSetup(false)
+        setNotionDbInput('')
+      } else {
+        setNotionDbError(data.error ?? 'Could not save database ID.')
+      }
+    } catch {
+      setNotionDbError('Network error.')
+    } finally {
+      setNotionDbSaving(false)
+    }
   }
 
   const handleManageBilling = async () => {
@@ -232,6 +264,45 @@ function ProfileContent() {
                 </button>
               )}
             </div>
+
+            {/* Setup required: token exists but no database linked */}
+            {notionNeedsSetup && !notionConnected && (
+              <div className="mt-4 p-4 border border-yellow-500/40 rounded bg-yellow-500/5">
+                <p className="text-sm font-semibold text-yellow-400 mb-2">Notion Connected — Database Setup Required</p>
+                <p className="text-xs text-gray-400 mb-3">
+                  ProFieldHub is authorized with Notion, but needs a database to write to. Follow these steps:
+                </p>
+                <ol className="text-xs text-gray-400 space-y-1 mb-4 list-decimal list-inside">
+                  <li>In Notion, create a new <strong className="text-white">database page</strong> (e.g. "Dust Logs")</li>
+                  <li>Open it, click <strong className="text-white">...</strong> → <strong className="text-white">Connections</strong> → find and add <strong className="text-white">ProFieldHub</strong></li>
+                  <li>Copy the database ID from the URL — it's the long string after the last <code className="text-neon-cyan">/</code> and before <code className="text-neon-cyan">?</code></li>
+                  <li>Paste it below and click Save</li>
+                </ol>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Paste Notion database ID..."
+                    value={notionDbInput}
+                    onChange={e => setNotionDbInput(e.target.value)}
+                    className="flex-1 bg-blueprint-bg border border-blueprint-grid text-white text-xs px-3 py-2 rounded focus:outline-none focus:border-neon-cyan"
+                  />
+                  <button
+                    onClick={handleSaveNotionDb}
+                    disabled={notionDbSaving || !notionDbInput.trim()}
+                    className="btn-primary text-xs px-4 disabled:opacity-50"
+                  >
+                    {notionDbSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+                {notionDbError && <p className="text-xs text-safety-orange mt-2">{notionDbError}</p>}
+                <button
+                  onClick={handleNotionDisconnect}
+                  className="text-xs text-gray-500 hover:text-gray-300 mt-3 block"
+                >
+                  Disconnect and start over
+                </button>
+              </div>
+            )}
           </div>
           {subscription !== 'DUST_LOGS' && (
             <p className="text-xs text-gray-500 mt-4">Integrations require Dust Logs tier ($50/mo)</p>
