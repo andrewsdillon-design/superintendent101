@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
 
 const FIELD_AI_SYSTEM_PROMPT = `You are a construction field documentation AI for Superintendent101.
@@ -29,7 +30,7 @@ OUTPUT FORMAT (JSON):
 }`
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession()
+  const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

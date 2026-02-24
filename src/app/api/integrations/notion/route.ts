@@ -1,32 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-// GET — return connection status for logged-in user
 export async function GET() {
-  const session = await getServerSession()
-  if (!session?.user) {
+  const session = await getServerSession(authOptions)
+  const user = session?.user as any
+  if (!user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: (session.user as any).email },
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
     select: { notionToken: true, notionDbId: true },
   })
 
   return NextResponse.json({
-    connected: !!user?.notionToken,
-    databaseId: user?.notionDbId || null,
+    connected: !!dbUser?.notionToken,
+    databaseId: dbUser?.notionDbId || null,
   })
 }
 
-// POST — initiate Notion OAuth (redirect URL returned to client)
 export async function POST() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   if (!process.env.NOTION_CLIENT_ID) {
-    return NextResponse.json(
-      { error: 'NOTION_CLIENT_ID not configured in .env' },
-      { status: 503 }
-    )
+    return NextResponse.json({ error: 'Notion integration not configured' }, { status: 503 })
   }
 
   const redirectUri = `${process.env.NEXTAUTH_URL}/api/integrations/notion/callback`
@@ -39,15 +41,15 @@ export async function POST() {
   return NextResponse.json({ url: oauthUrl.toString() })
 }
 
-// DELETE — disconnect Notion
 export async function DELETE() {
-  const session = await getServerSession()
-  if (!session?.user) {
+  const session = await getServerSession(authOptions)
+  const user = session?.user as any
+  if (!user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   await prisma.user.update({
-    where: { email: (session.user as any).email },
+    where: { id: user.id },
     data: { notionToken: null, notionDbId: null },
   })
 

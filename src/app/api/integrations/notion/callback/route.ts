@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 // Notion OAuth callback — exchanges code for access token
 export async function GET(request: NextRequest) {
-  const session = await getServerSession()
+  const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
 
   // Store token in DB (in production: encrypt with AES-256 before storing)
   await prisma.user.update({
-    where: { email: (session.user as any).email },
+    where: { id: (session.user as any).id },
     data: {
       notionToken: accessToken,
       notionDbId: databaseId,

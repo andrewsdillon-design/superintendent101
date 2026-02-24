@@ -27,13 +27,48 @@ function ProfileContent() {
   const user = session?.user as any
   const searchParams = useSearchParams()
   const upgraded = searchParams.get('upgraded')
-
-  const [managingBilling, setManagingBilling] = useState(false)
+  const notionStatus = searchParams.get('notion')
 
   const name = user?.name || user?.username || 'User'
   const username = user?.username || ''
   const role = user?.role || 'MEMBER'
   const subscription = user?.subscription || 'FREE'
+
+  const [managingBilling, setManagingBilling] = useState(false)
+  const [connectingNotion, setConnectingNotion] = useState(false)
+  const [notionConnected, setNotionConnected] = useState(false)
+
+  useEffect(() => {
+    if (subscription === 'DUST_LOGS') {
+      fetch('/api/integrations/notion')
+        .then(r => r.json())
+        .then(d => setNotionConnected(d.connected ?? false))
+        .catch(() => {})
+    }
+  }, [subscription])
+
+  const handleNotionConnect = async () => {
+    setConnectingNotion(true)
+    try {
+      const res = await fetch('/api/integrations/notion', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error ?? 'Could not connect to Notion.')
+      }
+    } catch {
+      alert('Network error.')
+    } finally {
+      setConnectingNotion(false)
+    }
+  }
+
+  const handleNotionDisconnect = async () => {
+    if (!confirm('Disconnect Notion? Your existing logs will stay in Notion but new ones won\'t sync.')) return
+    await fetch('/api/integrations/notion', { method: 'DELETE' })
+    setNotionConnected(false)
+  }
 
   const handleManageBilling = async () => {
     setManagingBilling(true)
@@ -78,6 +113,21 @@ function ProfileContent() {
         {upgraded && (
           <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
             Your subscription has been upgraded. Welcome to {subscription}!
+          </div>
+        )}
+        {notionStatus === 'connected' && (
+          <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
+            Notion connected. Your Dust Logs will sync to your ProFieldHub Dust Logs database.
+          </div>
+        )}
+        {notionStatus === 'error' && (
+          <div className="mb-6 p-4 bg-safety-orange/10 border border-safety-orange text-safety-orange text-sm rounded">
+            Notion connection failed. Please try again.
+          </div>
+        )}
+        {notionStatus === 'misconfigured' && (
+          <div className="mb-6 p-4 bg-safety-orange/10 border border-safety-orange text-safety-orange text-sm rounded">
+            Notion integration is not yet configured on this server.
           </div>
         )}
 
@@ -159,12 +209,28 @@ function ProfileContent() {
                 <p className="font-semibold text-sm">Notion</p>
                 <p className="text-xs text-gray-500">Sync Dust Logs to your Notion workspace</p>
               </div>
-              <button
-                disabled={subscription !== 'DUST_LOGS'}
-                className="btn-secondary text-xs px-3 py-1 disabled:opacity-40"
-              >
-                {subscription === 'DUST_LOGS' ? 'Connect' : 'Dust Logs required'}
-              </button>
+              {subscription === 'DUST_LOGS' ? (
+                notionConnected ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-safety-green">Connected</span>
+                    <button onClick={handleNotionDisconnect} className="btn-secondary text-xs px-3 py-1">
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleNotionConnect}
+                    disabled={connectingNotion}
+                    className="btn-secondary text-xs px-3 py-1 disabled:opacity-50"
+                  >
+                    {connectingNotion ? 'Connecting...' : 'Connect'}
+                  </button>
+                )
+              ) : (
+                <button disabled className="btn-secondary text-xs px-3 py-1 opacity-40 cursor-not-allowed">
+                  Dust Logs required
+                </button>
+              )}
             </div>
           </div>
           {subscription !== 'DUST_LOGS' && (
