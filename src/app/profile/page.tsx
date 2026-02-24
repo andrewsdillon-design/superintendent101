@@ -149,7 +149,12 @@ function ProfileContent() {
         )}
         {notionStatus === 'connected' && (
           <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
-            Notion connected. Your Dust Logs will sync to your ProFieldHub Dust Logs database.
+            Notion connected. Your Dust Logs will sync to your Notion database.
+          </div>
+        )}
+        {notionStatus === 'setup-needed' && (
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500 text-yellow-400 text-sm rounded">
+            Notion authorized — now link your database below to finish setup.
           </div>
         )}
         {notionStatus === 'error' && (

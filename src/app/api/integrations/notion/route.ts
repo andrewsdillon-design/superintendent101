@@ -35,7 +35,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Notion integration not configured' }, { status: 503 })
   }
 
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/integrations/notion/callback`
+  const redirectUri = 'https://profieldhub.com/integration/notion-dip'
   const oauthUrl = new URL('https://api.notion.com/v1/oauth/authorize')
   oauthUrl.searchParams.set('client_id', process.env.NOTION_CLIENT_ID)
   oauthUrl.searchParams.set('response_type', 'code')
