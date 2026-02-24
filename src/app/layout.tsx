@@ -2,7 +2,7 @@ import './globals.css'
 import { Providers } from './providers'
 
 export const metadata = {
-  title: 'Superintendent101',
+  title: 'ProFieldHub',
   description: 'Field Staff. Connected.',
 }
 
