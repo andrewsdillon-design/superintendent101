@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
+    "prebuild": "node -e \"const fs=require('fs'),p=process.cwd();console.log('BUILD CWD:',p);['src/components/mobile-nav.tsx','src/lib/db.ts','src/app/dashboard/page.tsx','src/app/projects/page.tsx'].forEach(f=>console.log(f,fs.existsSync(f)?'EXISTS':'MISSING'));\"",
     "build": "prisma generate && next build",
     "start": "next start",
     "postinstall": "prisma generate",
