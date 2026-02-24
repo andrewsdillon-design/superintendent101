@@ -28,6 +28,7 @@ model User {
   subscription    Subscription @default(FREE)
   stripeCustomerId String?
   stripeSubId      String?
+  walletAddress    String?  // Base network wallet address
   // Integration tokens (encrypted at rest)
   notionToken     String?
   notionDbId      String?
@@ -142,6 +143,27 @@ model Booking {
   totalPrice      Decimal
   status          BookingStatus @default(PENDING)
   createdAt       DateTime      @default(now())
+  escrow          Escrow?
+}
+
+model Escrow {
+  id         String       @id @default(cuid())
+  bookingId  String       @unique
+  booking    Booking      @relation(fields: [bookingId], references: [id])
+  txHash     String?
+  amount     Decimal
+  fee        Decimal
+  status     EscrowStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  settledAt  DateTime?
+}
+
+enum EscrowStatus {
+  PENDING
+  FUNDED
+  RELEASED
+  REFUNDED
+  DISPUTED
 }
 
 enum BookingStatus {

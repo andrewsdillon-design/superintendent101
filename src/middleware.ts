@@ -29,6 +29,7 @@ export const config = {
     '/projects/:path*',
     '/messages/:path*',
     '/dust-logs/:path*',
+    '/wallet/:path*',
     '/admin/:path*',
   ],
 }
