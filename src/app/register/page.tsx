@@ -54,7 +54,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="font-display text-3xl font-bold text-neon-cyan">
-            SUPERINTENDENT101
+            ProFieldHub
           </Link>
           <p className="text-gray-400 mt-2">Field Staff. Connected.</p>
         </div>

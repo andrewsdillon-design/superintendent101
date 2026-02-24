@@ -9,6 +9,7 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const registered = searchParams.get('registered')
+  const reset = searchParams.get('reset')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -43,6 +44,12 @@ function LoginForm() {
       {registered && (
         <div className="mb-4 p-3 bg-green-900/40 border border-green-500 text-green-300 text-sm">
           Account created! Sign in below.
+        </div>
+      )}
+
+      {reset && (
+        <div className="mb-4 p-3 bg-green-900/40 border border-green-500 text-green-300 text-sm">
+          Password updated! Sign in with your new password.
         </div>
       )}
 
@@ -84,7 +91,13 @@ function LoginForm() {
         </button>
       </form>
 
-      <div className="mt-6 text-center text-gray-400 text-sm">
+      <div className="mt-4 text-center">
+        <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-neon-cyan">
+          Forgot password?
+        </Link>
+      </div>
+
+      <div className="mt-4 text-center text-gray-400 text-sm">
         Don&apos;t have an account?{' '}
         <Link href="/register" className="text-neon-cyan hover:underline">
           Join Now
@@ -100,7 +113,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="font-display text-3xl font-bold text-neon-cyan">
-            SUPERINTENDENT101
+            ProFieldHub
           </Link>
           <p className="text-gray-400 mt-2">Field Staff. Connected.</p>
         </div>
