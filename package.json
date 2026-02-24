@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "prisma generate && next build",
-    "postbuild": "node -e \"const fs=require('fs'),path=require('path'),home=process.env.HOME||'/home/u513905908';const src=path.join(process.cwd(),'.next','static');const dest=path.join(home,'public_html','_next','static');console.log('POSTBUILD cwd:',process.cwd());console.log('POSTBUILD HOME:',home);console.log('POSTBUILD src:',src);console.log('POSTBUILD dest:',dest);const cp=(s,d)=>{if(fs.statSync(s).isDirectory()){fs.mkdirSync(d,{recursive:true});fs.readdirSync(s).forEach(f=>cp(path.join(s,f),path.join(d,f)))}else{fs.copyFileSync(s,d)}};try{fs.mkdirSync(dest,{recursive:true});cp(src,dest);console.log('Static files copied OK')}catch(e){console.log('Static copy FAILED:',e.message)}\"",
+    "postbuild": "node -e \"const fs=require('fs'),path=require('path');const src=path.join(process.cwd(),'.next','static');const dest=path.resolve(process.cwd(),'..','..','..','_next','static');console.log('POSTBUILD dest:',dest);const cp=(s,d)=>{if(fs.statSync(s).isDirectory()){fs.mkdirSync(d,{recursive:true});fs.readdirSync(s).forEach(f=>cp(path.join(s,f),path.join(d,f)))}else{fs.copyFileSync(s,d)}};try{fs.mkdirSync(dest,{recursive:true});cp(src,dest);console.log('Static files copied OK')}catch(e){console.log('Static copy FAILED:',e.message)}\"",
     "start": "next start",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
