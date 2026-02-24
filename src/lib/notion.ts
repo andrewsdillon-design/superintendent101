@@ -23,7 +23,7 @@ export async function pushLogToNotion(
 ) {
   const { projectName, address, date, structured } = logData
 
-  // Create the page in the user's S101 Dust Logs database
+  // Create the page in the user's ProFieldHub Dust Logs database
   const response = await fetch('https://api.notion.com/v1/pages', {
     method: 'POST',
     headers: {

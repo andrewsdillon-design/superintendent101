@@ -6,7 +6,7 @@ export default function Home() {
       <header className="border-b border-blueprint-grid p-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
           <h1 className="font-display text-lg sm:text-2xl font-bold text-neon-cyan whitespace-nowrap">
-            S101
+            ProFieldHub
           </h1>
           <div className="flex gap-2 sm:gap-4">
             <Link href="/login" className="btn-secondary text-sm sm:text-base">Sign In</Link>

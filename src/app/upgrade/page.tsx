@@ -66,7 +66,7 @@ export default function UpgradePage() {
     <div className="min-h-screen blueprint-bg">
       <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">S101</Link>
+          <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
           <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">← Back to Dashboard</Link>
         </div>
       </header>

@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         parent: { type: 'workspace', workspace: true },
-        title: [{ text: { content: 'S101 Dust Logs' } }],
+        title: [{ text: { content: 'ProFieldHub Dust Logs' } }],
         properties: {
           Name: { title: {} },
           Date: { date: {} },
