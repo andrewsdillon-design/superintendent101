@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import MobileNav from '@/components/MobileNav'
+import MobileNav from '@/components/mobile-nav'
 
 const projects = [
   { id: '1', name: 'Target Store #2847', address: '1234 Main St, Columbus, OH', type: 'Retail', sqft: 45000, status: 'ACTIVE' },

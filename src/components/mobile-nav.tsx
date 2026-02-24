@@ -64,16 +64,16 @@ export default function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={\`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 min-h-[56px] transition-colors \${
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 min-h-[56px] transition-colors ${
                 item.highlight
                   ? 'text-neon-cyan'
                   : isActive
                   ? 'text-white'
                   : 'text-gray-500 hover:text-gray-300'
-              }\`}
+              }`}
             >
               {item.icon}
-              <span className={\`text-[10px] leading-none \${item.highlight ? 'text-neon-cyan font-bold' : ''}\`}>
+              <span className={`text-[10px] leading-none ${item.highlight ? 'text-neon-cyan font-bold' : ''}`}>
                 {item.label}
               </span>
             </Link>

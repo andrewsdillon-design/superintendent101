@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import MobileNav from '@/components/MobileNav'
+import MobileNav from '@/components/mobile-nav'
 
 const mentors = [
   { id: '1', name: 'Mike Smith', username: 'mikesmith', bio: '25 years in commercial construction. OSHA 500 certified.', skills: ['superintendent', 'safety', 'scheduling'], hourlyRate: 75, location: 'Columbus, OH' },

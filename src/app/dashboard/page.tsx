@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import MobileNav from '@/components/MobileNav'
+import MobileNav from '@/components/mobile-nav'
 
 interface Post {
   id: string
