@@ -26,6 +26,8 @@ model User {
   mentorBio       String?
   hourlyRate      Decimal?
   subscription    Subscription @default(FREE)
+  stripeCustomerId String?
+  stripeSubId      String?
   // Integration tokens (encrypted at rest)
   notionToken     String?
   notionDbId      String?

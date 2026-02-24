@@ -2,24 +2,51 @@
 
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
 import MobileNav from '@/components/mobile-nav'
 
 function initials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
-export default function ProfilePage() {
+const tierLabel: Record<string, string> = {
+  FREE: 'FREE TIER',
+  PRO: 'MENTORSHIP — $20/mo',
+  DUST_LOGS: 'DUST LOGS — $50/mo',
+}
+
+const tierColor: Record<string, string> = {
+  FREE: 'text-gray-300',
+  PRO: 'text-safety-yellow',
+  DUST_LOGS: 'text-safety-orange',
+}
+
+function ProfileContent() {
   const { data: session } = useSession()
   const user = session?.user as any
+  const searchParams = useSearchParams()
+  const upgraded = searchParams.get('upgraded')
+
+  const [managingBilling, setManagingBilling] = useState(false)
 
   const name = user?.name || user?.username || 'User'
   const username = user?.username || ''
   const role = user?.role || 'MEMBER'
+  const subscription = user?.subscription || 'FREE'
 
-  const tierLabel: Record<string, string> = {
-    FREE: 'FREE TIER',
-    PRO: 'PRO — $20/mo',
-    DUST_LOGS: 'DUST LOGS — $50/mo',
+  const handleManageBilling = async () => {
+    setManagingBilling(true)
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+      else alert(data.error ?? 'Could not open billing portal.')
+    } catch {
+      alert('Network error.')
+    } finally {
+      setManagingBilling(false)
+    }
   }
 
   return (
@@ -36,6 +63,9 @@ export default function ProfilePage() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            {role === 'ADMIN' && (
+              <Link href="/admin" className="text-sm text-safety-orange font-semibold hover:underline">Admin Panel</Link>
+            )}
             <span className="text-sm text-white font-semibold">Profile</span>
             <button onClick={() => signOut({ callbackUrl: '/' })} className="text-sm text-gray-400 hover:text-white">
               Sign Out
@@ -45,6 +75,12 @@ export default function ProfilePage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
+        {upgraded && (
+          <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
+            Your subscription has been upgraded. Welcome to {subscription}!
+          </div>
+        )}
+
         <h1 className="font-display text-2xl font-bold text-safety-yellow mb-6">MY PROFILE</h1>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -55,14 +91,30 @@ export default function ProfilePage() {
             <h2 className="font-semibold text-lg mt-4">{name}</h2>
             {username && <p className="text-sm text-gray-500">@{username}</p>}
             {role === 'MENTOR' && <span className="badge-safe mt-2 inline-block">MENTOR</span>}
+            {role === 'ADMIN' && <span className="text-xs text-safety-orange font-bold mt-2 block">ADMIN</span>}
             <button className="btn-secondary w-full mt-4 text-sm">Edit Profile</button>
           </div>
 
           <div className="card md:col-span-2 space-y-4">
             <h3 className="font-bold text-safety-blue">SUBSCRIPTION</h3>
             <div className="flex items-center justify-between">
-              <span className="badge-safe">{tierLabel['FREE']}</span>
-              <Link href="/upgrade" className="btn-primary text-sm">Upgrade</Link>
+              <span className={`font-bold text-sm ${tierColor[subscription]}`}>
+                {tierLabel[subscription] ?? subscription}
+              </span>
+              {subscription === 'FREE' ? (
+                <Link href="/upgrade" className="btn-primary text-sm">Upgrade</Link>
+              ) : (
+                <div className="flex gap-2">
+                  <Link href="/upgrade" className="btn-secondary text-sm">Change Plan</Link>
+                  <button
+                    onClick={handleManageBilling}
+                    disabled={managingBilling}
+                    className="btn-secondary text-sm disabled:opacity-50"
+                  >
+                    {managingBilling ? 'Opening...' : 'Manage Billing'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-blueprint-grid pt-4">
@@ -73,11 +125,15 @@ export default function ProfilePage() {
                   <span>Community feed &amp; profile — FREE</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-600">○</span>
+                  <span className={subscription === 'PRO' || subscription === 'DUST_LOGS' ? 'text-safety-green' : 'text-gray-600'}>
+                    {subscription === 'PRO' || subscription === 'DUST_LOGS' ? '✓' : '○'}
+                  </span>
                   <span>Mentorship access + USDC hour trading — $20/mo</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-600">○</span>
+                  <span className={subscription === 'DUST_LOGS' ? 'text-safety-green' : 'text-gray-600'}>
+                    {subscription === 'DUST_LOGS' ? '✓' : '○'}
+                  </span>
                   <span>Dust Logs voice AI + Notion/NotebookLM sync — $50/mo</span>
                 </div>
               </div>
@@ -103,13 +159,28 @@ export default function ProfilePage() {
                 <p className="font-semibold text-sm">Notion</p>
                 <p className="text-xs text-gray-500">Sync Dust Logs to your Notion workspace</p>
               </div>
-              <button className="btn-secondary text-xs px-3 py-1">Connect</button>
+              <button
+                disabled={subscription !== 'DUST_LOGS'}
+                className="btn-secondary text-xs px-3 py-1 disabled:opacity-40"
+              >
+                {subscription === 'DUST_LOGS' ? 'Connect' : 'Dust Logs required'}
+              </button>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-4">Integrations require Dust Logs tier ($50/mo)</p>
+          {subscription !== 'DUST_LOGS' && (
+            <p className="text-xs text-gray-500 mt-4">Integrations require Dust Logs tier ($50/mo)</p>
+          )}
         </div>
       </main>
       <MobileNav />
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen blueprint-bg" />}>
+      <ProfileContent />
+    </Suspense>
   )
 }
