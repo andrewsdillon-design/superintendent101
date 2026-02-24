@@ -209,7 +209,7 @@ export default function DashboardPage() {
                 <div className="card mt-4">
                   <h3 className="font-bold text-safety-blue text-xs mb-3 tracking-widest">QUICK LINKS</h3>
                   <div className="space-y-2">
-                    <Link href="/dust-logs/new" className="btn-primary w-full text-xs block text-center py-2">New Dust Log</Link>
+                    <Link href="/dust-logs/new" className="btn-primary w-full text-xs block text-center py-2">New Daily Log</Link>
                     <Link href="/projects" className="btn-secondary w-full text-xs block text-center py-2">My Projects</Link>
                     <Link href="/wallet" className="btn-secondary w-full text-xs block text-center py-2">USDC Wallet</Link>
                   </div>

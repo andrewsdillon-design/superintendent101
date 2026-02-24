@@ -36,7 +36,7 @@ function formatTime(secs: number) {
   return `${m}:${s}`
 }
 
-export default function NewDustLogPage() {
+export default function NewDailyLogPage() {
   const router = useRouter()
 
   const [projectName, setProjectName] = useState('')
@@ -270,7 +270,7 @@ export default function NewDustLogPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="font-display text-2xl font-bold text-safety-green mb-1">NEW DUST LOG</h1>
+        <h1 className="font-display text-2xl font-bold text-safety-green mb-1">NEW DAILY LOG</h1>
         <p className="text-gray-400 text-sm mb-6">Record, drop a file, or type. AI structures and syncs to your workspace.</p>
 
         {/* Step bar */}

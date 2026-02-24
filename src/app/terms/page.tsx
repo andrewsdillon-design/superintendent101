@@ -16,7 +16,7 @@ export default function TermsOfUse() {
 
         <div>
           <h2 className="text-xl font-semibold text-white mb-2">2. Description of Service</h2>
-          <p>ProFieldHub is a field documentation and construction management platform for superintendents and project managers. Features include voice-to-text dust logs, AI structuring, project tracking, mentorship, and integrations with Notion and Google Drive.</p>
+          <p>ProFieldHub is a field documentation and construction management platform for superintendents and project managers. Features include voice-to-text daily logs, AI structuring, project tracking, mentorship, and integrations with Notion and Google Drive.</p>
         </div>
 
         <div>
@@ -48,7 +48,7 @@ export default function TermsOfUse() {
 
         <div>
           <h2 className="text-xl font-semibold text-white mb-2">6. Subscriptions and Billing</h2>
-          <p>Certain features (including Dust Logs AI) require a paid subscription. Subscription fees are billed in advance. Refunds are not provided for partial billing periods. We reserve the right to change pricing with 30 days notice.</p>
+          <p>Certain features (including Daily Logs AI) require a paid subscription. Subscription fees are billed in advance. Refunds are not provided for partial billing periods. We reserve the right to change pricing with 30 days notice.</p>
         </div>
 
         <div>

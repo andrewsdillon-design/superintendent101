@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { signOut } from 'next-auth/react'
 import MobileNav from '@/components/mobile-nav'
 
-interface DustLog {
+interface DailyLog {
   id: string
   projectName: string
   address: string
@@ -17,8 +17,8 @@ interface DustLog {
   notionUrl?: string
 }
 
-export default function DustLogsPage() {
-  const [logs, setLogs] = useState<DustLog[]>([])
+export default function DailyLogsPage() {
+  const [logs, setLogs] = useState<DailyLog[]>([])
   const [loading, setLoading] = useState(true)
   const [notionConnected, setNotionConnected] = useState<boolean | null>(null)
   const [error, setError] = useState('')

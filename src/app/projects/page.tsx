@@ -95,7 +95,7 @@ export default function ProjectsPage() {
               <Link href="/dashboard" className="text-gray-400">Feed</Link>
               <Link href="/mentors" className="text-gray-400">Mentors</Link>
               <Link href="/projects" className="text-white font-semibold">Projects</Link>
-              <Link href="/dust-logs" className="text-gray-400">Dust Logs</Link>
+              <Link href="/dust-logs" className="text-gray-400">Daily Logs</Link>
             </nav>
           </div>
           <Link href="/profile" className="text-sm text-gray-400">Profile</Link>

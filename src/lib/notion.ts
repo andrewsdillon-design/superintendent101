@@ -209,7 +209,7 @@ export async function fetchLogsFromNotion(token: string, databaseId: string) {
  * Uses API 2025-09-03 initial_data_source structure.
  * Returns the database ID or null if creation failed.
  */
-export async function createDustLogsDatabase(token: string): Promise<string | null> {
+export async function createDailyLogsDatabase(token: string): Promise<string | null> {
   const res = await fetch('https://api.notion.com/v1/databases', {
     method: 'POST',
     headers: notionHeaders(token),

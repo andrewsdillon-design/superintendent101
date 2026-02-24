@@ -140,7 +140,7 @@ export default function AdminUserPage() {
               >
                 <option value="FREE">FREE</option>
                 <option value="PRO">PRO ($20/mo)</option>
-                <option value="DUST_LOGS">DUST_LOGS ($50/mo)</option>
+                <option value="DUST_LOGS">Daily Logs ($50/mo)</option>
               </select>
             </div>
           </div>

@@ -16,7 +16,7 @@ export default function MessagesPage() {
             <nav className="hidden md:flex gap-4 text-sm">
               <Link href="/dashboard" className="text-gray-400">Feed</Link>
               <Link href="/mentors" className="text-gray-400">Mentors</Link>
-              <Link href="/dust-logs" className="text-gray-400">Dust Logs</Link>
+              <Link href="/dust-logs" className="text-gray-400">Daily Logs</Link>
               <Link href="/messages" className="text-white font-semibold">Messages</Link>
             </nav>
           </div>

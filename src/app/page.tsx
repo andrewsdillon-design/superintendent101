@@ -41,7 +41,7 @@ export default function Home() {
           <p className="text-sm text-gray-400">Document your project history.</p>
         </div>
         <div className="card">
-          <h3 className="font-bold text-safety-green mb-2">DUST LOGS</h3>
+          <h3 className="font-bold text-safety-green mb-2">DAILY LOGS</h3>
           <p className="text-sm text-gray-400">Voice-to-text daily logs with AI.</p>
         </div>
       </section>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { createDustLogsDatabase } from '@/lib/notion'
+import { createDailyLogsDatabase } from '@/lib/notion'
 
 const REDIRECT_URI = 'https://profieldhub.com/notion/callback'
 
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   let databaseId: string | null = tokenData.duplicated_template_id || null
 
   if (!databaseId) {
-    databaseId = await createDustLogsDatabase(accessToken)
+    databaseId = await createDailyLogsDatabase(accessToken)
   }
 
   await prisma.user.update({
