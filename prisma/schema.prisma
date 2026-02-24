@@ -29,8 +29,6 @@ model User {
   // Integration tokens (encrypted at rest)
   notionToken     String?
   notionDbId      String?
-  googleToken     String?
-  googleFolderId  String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 

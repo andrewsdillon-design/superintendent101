@@ -105,13 +105,6 @@ export default function ProfilePage() {
               </div>
               <button className="btn-secondary text-xs px-3 py-1">Connect</button>
             </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-semibold text-sm">Google NotebookLM</p>
-                <p className="text-xs text-gray-500">AI-powered field log analysis</p>
-              </div>
-              <button className="btn-secondary text-xs px-3 py-1">Connect</button>
-            </div>
           </div>
           <p className="text-xs text-gray-500 mt-4">Integrations require Dust Logs tier ($50/mo)</p>
         </div>

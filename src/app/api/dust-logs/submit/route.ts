@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { pushLogToNotion } from '@/lib/notion'
-import { pushLogToDrive } from '@/lib/google-drive'
 
 // Full pipeline: receives structured log + pushes to user workspaces
 // This is called after transcription + GPT-4o structuring is complete on the client
@@ -26,8 +25,6 @@ export async function POST(request: NextRequest) {
       id: true,
       notionToken: true,
       notionDbId: true,
-      googleToken: true,
-      googleFolderId: true,
       subscription: true,
     },
   })
@@ -52,19 +49,6 @@ export async function POST(request: NextRequest) {
     }
   } else {
     results.notion = 'not connected'
-  }
-
-  // Push to Google Drive if connected
-  if (user.googleToken && user.googleFolderId) {
-    try {
-      await pushLogToDrive(user.googleToken, user.googleFolderId, logData)
-      results.google = 'synced'
-    } catch (err: any) {
-      console.error('Google Drive push failed:', err.message)
-      results.google = `failed: ${err.message}`
-    }
-  } else {
-    results.google = 'not connected'
   }
 
   // Save metadata to DB — NO audio or full transcript stored
