@@ -124,7 +124,7 @@ export default function DashboardPage() {
               <Link href="/dashboard" className="text-white">Home</Link>
               <Link href="/mentors" className="text-gray-400 hover:text-white">Mentors</Link>
               <Link href="/projects" className="text-gray-400 hover:text-white">Projects</Link>
-              <Link href="/dust-logs" className="text-gray-400 hover:text-white">Dust Logs</Link>
+              <Link href="/dust-logs" className="text-gray-400 hover:text-white">Daily Logs</Link>
               <Link href="/wallet" className="text-gray-400 hover:text-white">Wallet</Link>
             </nav>
           </div>

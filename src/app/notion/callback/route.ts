@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createDustLogsDatabase } from '@/lib/notion'
 
 const REDIRECT_URI = 'https://profieldhub.com/notion/callback'
 
@@ -47,11 +48,13 @@ export async function GET(request: NextRequest) {
   const tokenData = await tokenRes.json()
   const accessToken = tokenData.access_token
 
-  // Try to use a duplicated template database if provided
-  let databaseId = tokenData.duplicated_template_id || null
+  // Try template duplicate first, then auto-create the database
+  let databaseId: string | null = tokenData.duplicated_template_id || null
 
-  // Save token — databaseId may be null if no pages were shared yet
-  // User will be prompted to paste their database ID on the profile page
+  if (!databaseId) {
+    databaseId = await createDustLogsDatabase(accessToken)
+  }
+
   await prisma.user.update({
     where: { id: (session.user as any).id },
     data: {

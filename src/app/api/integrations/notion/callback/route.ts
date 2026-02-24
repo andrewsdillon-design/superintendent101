@@ -47,11 +47,11 @@ export async function GET(request: NextRequest) {
   const tokenData = await tokenRes.json()
   const accessToken = tokenData.access_token
 
-  // Find or create a Dust Logs database in the user's Notion workspace
+  // Find or create a Daily Logs database in the user's Notion workspace
   let databaseId = tokenData.duplicated_template_id || null
 
   if (!databaseId) {
-    // Create a new database for Dust Logs
+    // Create a new database for Daily Logs
     const dbRes = await fetch('https://api.notion.com/v1/databases', {
       method: 'POST',
       headers: {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         parent: { type: 'workspace', workspace: true },
-        title: [{ text: { content: 'ProFieldHub Dust Logs' } }],
+        title: [{ text: { content: 'ProFieldHub Daily Logs' } }],
         properties: {
           Name: { title: {} },
           Date: { date: {} },

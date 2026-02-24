@@ -1,4 +1,7 @@
-// Notion helper — push and fetch dust logs
+// Notion helper — push and fetch daily logs
+// API version: 2025-09-03
+
+const NOTION_VERSION = '2025-09-03'
 
 interface StructuredLog {
   summary: string
@@ -11,8 +14,6 @@ interface StructuredLog {
   structuredLog: string
 }
 
-const NOTION_VERSION = '2022-06-28'
-
 function notionHeaders(token: string) {
   return {
     Authorization: `Bearer ${token}`,
@@ -22,8 +23,35 @@ function notionHeaders(token: string) {
 }
 
 /**
+ * Get the first data_source_id for a given database ID.
+ * Required for all query/create operations in API 2025-09-03.
+ */
+async function getDataSourceId(token: string, databaseId: string): Promise<string> {
+  const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Notion-Version': NOTION_VERSION,
+    },
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Failed to get database info: ${err}`)
+  }
+
+  const data = await res.json()
+  const dataSourceId = data.data_sources?.[0]?.id
+
+  if (!dataSourceId) {
+    throw new Error('No data source found for this database. The database may not be shared with this integration.')
+  }
+
+  return dataSourceId
+}
+
+/**
  * Searches the user's Notion workspace for the best database to store this log.
- * Priority: 1) database name matches project name, 2) matches job type, 3) default DB.
+ * Priority: 1) data source name matches project name, 2) matches job type, 3) default DB.
  */
 export async function findBestDatabase(
   token: string,
@@ -36,7 +64,7 @@ export async function findBestDatabase(
       method: 'POST',
       headers: notionHeaders(token),
       body: JSON.stringify({
-        filter: { value: 'database', property: 'object' },
+        filter: { value: 'data_source', property: 'object' },
         sort: { direction: 'descending', timestamp: 'last_edited_time' },
       }),
     })
@@ -44,34 +72,31 @@ export async function findBestDatabase(
     if (!res.ok) return { id: defaultDbId, name: 'default' }
 
     const data = await res.json()
-    const databases: any[] = data.results || []
+    const results: any[] = data.results || []
 
     const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()
     const project = normalize(projectName)
     const job = normalize(jobType)
 
-    // 1. Project name match (DB title contains project name or vice versa)
-    const projectMatch = databases.find((db) => {
-      const title = normalize(db.title?.[0]?.plain_text || '')
+    // 1. Match by project name
+    const projectMatch = results.find((r) => {
+      const title = normalize(r.title?.[0]?.plain_text || '')
       return title && (title.includes(project) || project.includes(title))
     })
     if (projectMatch) {
-      return {
-        id: projectMatch.id,
-        name: projectMatch.title?.[0]?.plain_text || 'project-matched',
-      }
+      // projectMatch.id is the data_source_id — get its parent database_id
+      const parentDbId = projectMatch.parent?.database_id || defaultDbId
+      return { id: parentDbId, name: projectMatch.title?.[0]?.plain_text || 'project-matched' }
     }
 
-    // 2. Job type match
-    const jobMatch = databases.find((db) => {
-      const title = normalize(db.title?.[0]?.plain_text || '')
+    // 2. Match by job type
+    const jobMatch = results.find((r) => {
+      const title = normalize(r.title?.[0]?.plain_text || '')
       return title && title.includes(job)
     })
     if (jobMatch) {
-      return {
-        id: jobMatch.id,
-        name: jobMatch.title?.[0]?.plain_text || 'job-type-matched',
-      }
+      const parentDbId = jobMatch.parent?.database_id || defaultDbId
+      return { id: parentDbId, name: jobMatch.title?.[0]?.plain_text || 'job-type-matched' }
     }
 
     return { id: defaultDbId, name: 'default' }
@@ -81,7 +106,7 @@ export async function findBestDatabase(
 }
 
 /**
- * Pushes a structured log to the target Notion database.
+ * Pushes a structured log as a new page into the target Notion database.
  */
 export async function pushLogToNotion(
   token: string,
@@ -95,11 +120,17 @@ export async function pushLogToNotion(
 ) {
   const { projectName, address, date, structured } = logData
 
+  // Get the data_source_id required by API 2025-09-03
+  const dataSourceId = await getDataSourceId(token, databaseId)
+
   const response = await fetch('https://api.notion.com/v1/pages', {
     method: 'POST',
     headers: notionHeaders(token),
     body: JSON.stringify({
-      parent: { database_id: databaseId },
+      parent: {
+        type: 'data_source_id',
+        data_source_id: dataSourceId,
+      },
       properties: {
         Name: {
           title: [{ text: { content: `${date} — ${projectName}` } }],
@@ -134,7 +165,10 @@ export async function pushLogToNotion(
  * Fetches logs from the user's Notion database, sorted newest first.
  */
 export async function fetchLogsFromNotion(token: string, databaseId: string) {
-  const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+  // Get the data_source_id required by API 2025-09-03
+  const dataSourceId = await getDataSourceId(token, databaseId)
+
+  const res = await fetch(`https://api.notion.com/v1/data_sources/${dataSourceId}/query`, {
     method: 'POST',
     headers: notionHeaders(token),
     body: JSON.stringify({
@@ -153,7 +187,6 @@ export async function fetchLogsFromNotion(token: string, databaseId: string) {
   return (data.results || []).map((page: any) => {
     const props = page.properties
     const rawTitle = props.Name?.title?.[0]?.plain_text || 'Untitled'
-    // Title format: "2026-02-24 — Project Name"
     const titleParts = rawTitle.split(' — ')
     const projectName = titleParts.length > 1 ? titleParts.slice(1).join(' — ') : rawTitle
 
@@ -169,6 +202,51 @@ export async function fetchLogsFromNotion(token: string, databaseId: string) {
       notionUrl: page.url,
     }
   })
+}
+
+/**
+ * Creates a new "ProFieldHub Daily Logs" database in the user's workspace.
+ * Uses API 2025-09-03 initial_data_source structure.
+ * Returns the database ID or null if creation failed.
+ */
+export async function createDustLogsDatabase(token: string): Promise<string | null> {
+  const res = await fetch('https://api.notion.com/v1/databases', {
+    method: 'POST',
+    headers: notionHeaders(token),
+    body: JSON.stringify({
+      parent: { type: 'workspace', workspace: true },
+      title: [{ text: { content: 'ProFieldHub Daily Logs' } }],
+      initial_data_source: {
+        properties: {
+          Name: { title: {} },
+          Date: { date: {} },
+          Location: { rich_text: {} },
+          'Job Type': {
+            select: {
+              options: [
+                { name: 'retail', color: 'blue' },
+                { name: 'industrial', color: 'orange' },
+                { name: 'healthcare', color: 'green' },
+                { name: 'multi-family', color: 'purple' },
+                { name: 'office', color: 'gray' },
+                { name: 'other', color: 'default' },
+              ],
+            },
+          },
+          Tags: { multi_select: {} },
+          Summary: { rich_text: {} },
+        },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    console.error('Failed to create Notion database:', await res.text())
+    return null
+  }
+
+  const data = await res.json()
+  return data.id || null
 }
 
 // ── Block builders ────────────────────────────────────────────────────────────

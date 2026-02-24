@@ -45,7 +45,7 @@ export default function DustLogsPage() {
               <Link href="/dashboard" className="text-gray-400 hover:text-white">Feed</Link>
               <Link href="/mentors" className="text-gray-400 hover:text-white">Mentors</Link>
               <Link href="/projects" className="text-gray-400 hover:text-white">Projects</Link>
-              <Link href="/dust-logs" className="text-white font-semibold">Dust Logs</Link>
+              <Link href="/dust-logs" className="text-white font-semibold">Daily Logs</Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -60,7 +60,7 @@ export default function DustLogsPage() {
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="font-display text-3xl font-bold text-safety-green">DUST LOGS</h1>
+            <h1 className="font-display text-3xl font-bold text-safety-green">DAILY LOGS</h1>
             <p className="text-gray-400 mt-2">Voice-to-text daily field logs. AI-structured. Saved to your Notion.</p>
           </div>
           {notionConnected && (
@@ -105,7 +105,7 @@ export default function DustLogsPage() {
           <div className="card text-center py-10 border border-yellow-500/30">
             <p className="text-yellow-400 font-bold text-lg mb-2">Notion Required</p>
             <p className="text-gray-400 text-sm mb-6">
-              Dust Logs are saved directly to your personal Notion workspace — we don&apos;t store your field data on our servers.
+              Daily Logs are saved directly to your personal Notion workspace — we don&apos;t store your field data on our servers.
               Connect Notion in your profile to get started.
             </p>
             <Link href="/profile" className="btn-primary">Connect Notion →</Link>

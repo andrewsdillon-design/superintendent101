@@ -13,7 +13,7 @@ function initials(name: string) {
 const tierLabel: Record<string, string> = {
   FREE: 'FREE TIER',
   PRO: 'MENTORSHIP — $20/mo',
-  DUST_LOGS: 'DUST LOGS — $50/mo',
+  DUST_LOGS: 'DAILY LOGS — $50/mo',
 }
 
 const tierColor: Record<string, string> = {
@@ -126,7 +126,7 @@ function ProfileContent() {
               <Link href="/dashboard" className="text-gray-400 hover:text-white">Feed</Link>
               <Link href="/mentors" className="text-gray-400 hover:text-white">Mentors</Link>
               <Link href="/projects" className="text-gray-400 hover:text-white">Projects</Link>
-              <Link href="/dust-logs" className="text-gray-400 hover:text-white">Dust Logs</Link>
+              <Link href="/dust-logs" className="text-gray-400 hover:text-white">Daily Logs</Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -149,7 +149,7 @@ function ProfileContent() {
         )}
         {notionStatus === 'connected' && (
           <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
-            Notion connected. Your Dust Logs will sync to your Notion database.
+            Notion connected. Your Daily Logs will sync to your Notion database.
           </div>
         )}
         {notionStatus === 'setup-needed' && (
@@ -221,7 +221,7 @@ function ProfileContent() {
                   <span className={subscription === 'DUST_LOGS' ? 'text-safety-green' : 'text-gray-600'}>
                     {subscription === 'DUST_LOGS' ? '✓' : '○'}
                   </span>
-                  <span>Dust Logs voice AI + Notion/NotebookLM sync — $50/mo</span>
+                  <span>Daily Logs voice AI + Notion/NotebookLM sync — $50/mo</span>
                 </div>
               </div>
             </div>
@@ -244,7 +244,7 @@ function ProfileContent() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-semibold text-sm">Notion</p>
-                <p className="text-xs text-gray-500">Sync Dust Logs to your Notion workspace</p>
+                <p className="text-xs text-gray-500">Sync Daily Logs to your Notion workspace</p>
               </div>
               {subscription === 'DUST_LOGS' ? (
                 notionConnected ? (
@@ -265,7 +265,7 @@ function ProfileContent() {
                 )
               ) : (
                 <button disabled className="btn-secondary text-xs px-3 py-1 opacity-40 cursor-not-allowed">
-                  Dust Logs required
+                  Daily Logs required
                 </button>
               )}
             </div>
@@ -278,7 +278,7 @@ function ProfileContent() {
                   ProFieldHub is authorized with Notion, but needs a database to write to. Follow these steps:
                 </p>
                 <ol className="text-xs text-gray-400 space-y-1 mb-4 list-decimal list-inside">
-                  <li>In Notion, create a new <strong className="text-white">database page</strong> (e.g. "Dust Logs")</li>
+                  <li>In Notion, create a new <strong className="text-white">database page</strong> (e.g. "Daily Logs")</li>
                   <li>Open it, click <strong className="text-white">...</strong> → <strong className="text-white">Connections</strong> → find and add <strong className="text-white">ProFieldHub</strong></li>
                   <li>Copy the database ID from the URL — it's the long string after the last <code className="text-neon-cyan">/</code> and before <code className="text-neon-cyan">?</code></li>
                   <li>Paste it below and click Save</li>
@@ -310,7 +310,7 @@ function ProfileContent() {
             )}
           </div>
           {subscription !== 'DUST_LOGS' && (
-            <p className="text-xs text-gray-500 mt-4">Integrations require Dust Logs tier ($50/mo)</p>
+            <p className="text-xs text-gray-500 mt-4">Integrations require Daily Logs tier ($50/mo)</p>
           )}
         </div>
       </main>

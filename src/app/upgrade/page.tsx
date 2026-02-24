@@ -42,7 +42,7 @@ const tiers = [
     highlight: true,
   },
   {
-    name: 'DUST LOGS',
+    name: 'DAILY LOGS',
     tier: 'DUST_LOGS' as const,
     price: '$50',
     period: '/month',
@@ -58,7 +58,7 @@ const tiers = [
       'No files stored (privacy-first)',
       'SOC 2 compliant pipeline',
     ],
-    cta: 'Upgrade to Dust Logs',
+    cta: 'Upgrade to Daily Logs',
     ctaStyle: 'btn-primary',
   },
 ]
@@ -212,7 +212,7 @@ export default function UpgradePage() {
         </div>
 
         <div className="mt-6 card">
-          <h3 className="font-bold text-safety-green mb-4">DUST LOGS — PRIVACY ARCHITECTURE</h3>
+          <h3 className="font-bold text-safety-green mb-4">DAILY LOGS — PRIVACY ARCHITECTURE</h3>
           <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
             <div>
               <p className="font-bold text-white mb-2">Zero-storage pipeline</p>

@@ -262,7 +262,7 @@ export default function NewDustLogPage() {
             <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
             <nav className="hidden md:flex gap-4 text-sm">
               <Link href="/dashboard" className="text-gray-400 hover:text-white">Feed</Link>
-              <Link href="/dust-logs" className="text-white">Dust Logs</Link>
+              <Link href="/dust-logs" className="text-white">Daily Logs</Link>
             </nav>
           </div>
           <Link href="/dust-logs" className="text-sm text-gray-400 hover:text-white">← Back</Link>
