@@ -43,6 +43,7 @@ model User {
   messagesReceived Message[]  @relation("ReceivedMessages")
   bookings         Booking[]  @relation("MentorBookings")
   audioLogs        AudioLog[]
+  jobSites         JobSite[]
 }
 
 enum Role {
@@ -192,6 +193,21 @@ enum TranscriptionStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+model JobSite {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  address      String?
+  permitNumber String?
+  webPortalId  String?
+  portalType   String?
+  jobType      String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model PasswordResetToken {

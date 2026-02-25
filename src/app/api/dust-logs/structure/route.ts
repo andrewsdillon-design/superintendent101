@@ -17,6 +17,14 @@ FIELD AI OPERATING RULES:
 7. Superintendent role clarity — document what YOU observed, not hearsay
 8. Walk the site rule — if it's documented, it happened
 
+MULTI-SITE RECORDING RULE (critical):
+- A superintendent may record a single voice memo covering multiple job sites in one session
+- You are ONLY extracting information for the specific project provided in the user message
+- If the speaker transitions to a different site (says a different location, lot number, or project name), STOP extracting at that point
+- Only include observations you can confidently attribute to the specified project
+- If an observation's site is ambiguous, add [VERIFY SITE] to that item
+- Do not mix observations from different job sites into one log
+
 OUTPUT FORMAT (JSON):
 {
   "summary": "1-2 sentence plain-language summary of the day",
@@ -25,7 +33,7 @@ OUTPUT FORMAT (JSON):
   "safety": ["safety observation 1"],
   "nextSteps": ["next step 1"],
   "tags": ["tag1", "tag2"],
-  "jobType": "retail|industrial|healthcare|multi-family|office|other",
+  "jobType": "retail|industrial|healthcare|multi-family|residential|office|other",
   "structuredLog": "full formatted plain-text version for export"
 }`
 
@@ -43,7 +51,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { transcript, projectName, address, date } = body
+  const { transcript, projectName, address, date, permitNumber } = body
 
   if (!transcript?.trim()) {
     return NextResponse.json({ error: 'Transcript is required' }, { status: 400 })
@@ -59,17 +67,19 @@ export async function POST(request: NextRequest) {
         { role: 'system', content: FIELD_AI_SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Project: ${projectName || 'Unknown'}
+          content: `ACTIVE PROJECT (extract ONLY information for this site):
+Project: ${projectName || 'Unknown'}
 Location: ${address || 'Unknown'}
+Permit: ${permitNumber || 'N/A'}
 Date: ${date || new Date().toISOString().split('T')[0]}
 
 RAW TRANSCRIPT:
 ${transcript}
 
-Structure this field log according to the rules above.`,
+Structure this field log. Extract only observations for the project above. If the transcript covers multiple sites, filter to this site only.`,
         },
       ],
-      max_tokens: 1000,
+      max_tokens: 1500,
       temperature: 0.2,
     })
 

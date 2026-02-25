@@ -106,7 +106,90 @@ export async function findBestDatabase(
 }
 
 /**
- * Pushes a structured log as a new page into the target Notion database.
+ * Checks if a log page already exists for today's date and this project.
+ * Returns the page ID if found, null otherwise.
+ */
+async function findTodaysLog(
+  token: string,
+  databaseId: string,
+  projectName: string,
+  today: string
+): Promise<string | null> {
+  try {
+    const dataSourceId = await getDataSourceId(token, databaseId)
+
+    const res = await fetch(`https://api.notion.com/v1/data_sources/${dataSourceId}/query`, {
+      method: 'POST',
+      headers: notionHeaders(token),
+      body: JSON.stringify({
+        sorts: [{ property: 'Date', direction: 'descending' }],
+        page_size: 10,
+      }),
+    })
+
+    if (!res.ok) return null
+
+    const data = await res.json()
+    const results: any[] = data.results || []
+
+    const match = results.find((page) => {
+      const pageDate = page.properties?.Date?.date?.start
+      const title = page.properties?.Name?.title?.[0]?.plain_text || ''
+      return pageDate === today && title.toLowerCase().includes(projectName.toLowerCase())
+    })
+
+    return match?.id || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Appends a new structured entry to an existing Notion page with a timestamp divider.
+ */
+async function appendToNotionPage(
+  token: string,
+  pageId: string,
+  structured: StructuredLog
+): Promise<{ id: string; url: string }> {
+  const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+
+  const blocks = [
+    divider(),
+    heading(`📍 Update — ${timeStr}`, 'default'),
+    ...buildNotionBlocks(structured),
+  ]
+
+  const res = await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
+    method: 'PATCH',
+    headers: notionHeaders(token),
+    body: JSON.stringify({ children: blocks }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Notion append failed: ${err}`)
+  }
+
+  // Fetch the page to return consistent shape
+  const pageRes = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Notion-Version': NOTION_VERSION,
+    },
+  })
+
+  if (!pageRes.ok) {
+    return { id: pageId, url: `https://notion.so/${pageId.replace(/-/g, '')}` }
+  }
+
+  return pageRes.json()
+}
+
+/**
+ * Pushes a structured log to Notion.
+ * If a page already exists for today + this project, appends to it.
+ * Otherwise creates a new page.
  */
 export async function pushLogToNotion(
   token: string,
@@ -120,7 +203,13 @@ export async function pushLogToNotion(
 ) {
   const { projectName, address, date, structured } = logData
 
-  // Get the data_source_id required by API 2025-09-03
+  // Check if today's log already exists — if so, append instead of creating new
+  const existingPageId = await findTodaysLog(token, databaseId, projectName, date)
+  if (existingPageId) {
+    return appendToNotionPage(token, existingPageId, structured)
+  }
+
+  // No existing page — create a new one
   const dataSourceId = await getDataSourceId(token, databaseId)
 
   const response = await fetch('https://api.notion.com/v1/pages', {
