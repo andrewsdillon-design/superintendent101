@@ -628,53 +628,63 @@ export default function NewDailyLogPage() {
             {/* Option 2: Drop file */}
             {step !== 'recording' && (
               <div className="card border-2 border-safety-blue/40">
-                <h3 className="font-bold text-safety-blue mb-3 text-sm uppercase">Option 2 — Drop or Select a File</h3>
+                <h3 className="font-bold text-safety-blue mb-3 text-sm uppercase">Option 2 — Upload a File</h3>
                 <p className="text-xs text-gray-500 mb-3">
                   mp3 · mp4 · m4a · wav · webm · ogg · flac · mpeg &nbsp;·&nbsp; max 25MB
                 </p>
 
-                <div
-                  ref={dropZoneRef}
-                  onDragOver={onDragOver}
-                  onDragLeave={onDragLeave}
-                  onDrop={onDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded p-8 text-center cursor-pointer transition-colors ${
-                    dragging
-                      ? 'border-neon-cyan bg-neon-cyan/5 text-neon-cyan'
-                      : droppedFile
-                      ? 'border-safety-green bg-safety-green/5'
-                      : 'border-blueprint-grid hover:border-safety-blue text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept={ACCEPTED_TYPES.map(e => `.${e}`).join(',')}
-                    onChange={onFileInput}
-                    className="hidden"
-                  />
-                  {droppedFile ? (
-                    <div>
-                      <p className="text-safety-green font-bold">✓ {droppedFile.name}</p>
-                      <p className="text-xs text-gray-400 mt-1">{formatBytes(droppedFile.size)}</p>
-                      <button
-                        onClick={e => { e.stopPropagation(); setDroppedFile(null); setError('') }}
-                        className="text-xs text-gray-500 hover:text-red-400 mt-2 underline"
-                      >
-                        Remove
-                      </button>
+                {/* Hidden input — wired via label, NOT programmatic .click() */}
+                <input
+                  id="file-upload-input"
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_TYPES.map(e => `.${e}`).join(',')}
+                  onChange={onFileInput}
+                  className="hidden"
+                />
+
+                {droppedFile ? (
+                  <div className="border border-safety-green bg-safety-green/5 rounded p-4 text-center">
+                    <p className="text-safety-green font-bold">✓ {droppedFile.name}</p>
+                    <p className="text-xs text-gray-400 mt-1">{formatBytes(droppedFile.size)}</p>
+                    <button
+                      onClick={() => { setDroppedFile(null); setError('') }}
+                      className="text-xs text-gray-500 hover:text-red-400 mt-2 underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {/* Drag zone — desktop only, no click handler */}
+                    <div
+                      ref={dropZoneRef}
+                      onDragOver={onDragOver}
+                      onDragLeave={onDragLeave}
+                      onDrop={onDrop}
+                      className={`hidden md:flex border-2 border-dashed rounded p-6 text-center items-center justify-center transition-colors ${
+                        dragging
+                          ? 'border-neon-cyan bg-neon-cyan/5 text-neon-cyan'
+                          : 'border-blueprint-grid text-gray-500'
+                      }`}
+                    >
+                      {dragging ? (
+                        <p className="font-bold">Drop it!</p>
+                      ) : (
+                        <p className="text-sm">Drag &amp; drop audio file here</p>
+                      )}
                     </div>
-                  ) : dragging ? (
-                    <p className="font-bold">Drop it!</p>
-                  ) : (
-                    <div>
-                      <p className="text-2xl mb-2">↓</p>
-                      <p>Drag &amp; drop audio file here</p>
-                      <p className="text-xs mt-1">or click to browse</p>
-                    </div>
-                  )}
-                </div>
+
+                    {/* Native file picker — works on all devices including mobile */}
+                    <label
+                      htmlFor="file-upload-input"
+                      className="flex items-center justify-center gap-2 w-full border border-safety-blue text-safety-blue text-sm py-3 cursor-pointer hover:bg-safety-blue/10 transition-colors"
+                    >
+                      <span>↑</span>
+                      <span>Browse Files</span>
+                    </label>
+                  </div>
+                )}
 
                 {droppedFile && (
                   <button
