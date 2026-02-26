@@ -25,7 +25,7 @@ const tiers = [
   {
     name: 'MENTORSHIP',
     tier: 'PRO' as const,
-    price: '$20',
+    price: '$39',
     period: '/month',
     color: 'text-safety-yellow',
     border: 'border-safety-yellow',
@@ -44,12 +44,13 @@ const tiers = [
   {
     name: 'DAILY LOGS',
     tier: 'DUST_LOGS' as const,
-    price: '$50',
+    price: '$19',
     period: '/month',
     color: 'text-safety-orange',
     border: 'border-safety-orange',
     features: [
       'Everything in Mentorship',
+      '7-day free trial',
       'Voice-to-text field logging',
       'AI-powered log structuring',
       'Notion workspace sync',
@@ -208,7 +209,7 @@ export default function UpgradePage() {
               <p className="text-gray-400 text-xs">5% platform fee on mentorship transactions. No fees for community features.</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">* USDC payments require Mentorship tier ($20/mo). Coming soon.</p>
+          <p className="text-xs text-gray-500 mt-3">* USDC payments require Mentorship tier ($39/mo). Coming soon.</p>
         </div>
 
         <div className="mt-6 card">

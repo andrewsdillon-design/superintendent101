@@ -50,6 +50,16 @@ function formatTime(secs: number) {
 export default function NewDailyLogPage() {
   const router = useRouter()
 
+  // ── Access check ──────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/dust-logs')
+      .then(r => r.json())
+      .then(d => {
+        if (d.hasAccess === false) router.replace('/upgrade')
+      })
+      .catch(() => {})
+  }, [router])
+
   // ── Job site picker state ──────────────────────────────────────────────
   const [jobSites, setJobSites] = useState<JobSite[]>([])
   const [loadingJobSites, setLoadingJobSites] = useState(true)

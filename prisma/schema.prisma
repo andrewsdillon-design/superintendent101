@@ -26,6 +26,7 @@ model User {
   mentorBio       String?
   hourlyRate      Decimal?
   subscription    Subscription @default(FREE)
+  trialEndsAt     DateTime?
   stripeCustomerId String?
   stripeSubId      String?
   walletAddress    String?  // Base network wallet address

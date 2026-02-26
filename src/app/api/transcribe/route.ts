@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
 import { toFile } from 'openai'
 import { logWhisperUsage } from '@/lib/usage'
+import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
 
 // Whisper supports: mp3, mp4, mpeg, mpga, m4a, wav, webm, ogg, flac
 const ALLOWED_TYPES: Record<string, string> = {
@@ -39,6 +40,15 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const userId = (session.user as any).id
+  const hasAccess = await checkDustLogsAccess(userId)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: 'Trial expired. Please subscribe to continue.' },
+      { status: 403 }
+    )
   }
 
   if (!process.env.OPENAI_API_KEY) {

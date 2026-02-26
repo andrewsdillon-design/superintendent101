@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         name: [firstName, lastName].filter(Boolean).join(' ') || username,
         skills: skillsArray,
         yearsExperience: yearsExperience ? parseInt(yearsExperience) : null,
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
       select: { id: true, email: true, username: true, name: true },
     })

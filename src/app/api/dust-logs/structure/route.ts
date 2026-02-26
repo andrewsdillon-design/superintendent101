@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
 import { logGpt4oUsage } from '@/lib/usage'
+import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
 
 const FIELD_AI_SYSTEM_PROMPT = `You are a construction field documentation AI for Superintendent101.
 
@@ -42,6 +43,15 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const userId = (session.user as any).id
+  const hasAccess = await checkDustLogsAccess(userId)
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: 'Trial expired. Please subscribe to continue.' },
+      { status: 403 }
+    )
   }
 
   if (!process.env.OPENAI_API_KEY) {

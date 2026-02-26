@@ -21,6 +21,8 @@ export default function DailyLogsPage() {
   const [logs, setLogs] = useState<DailyLog[]>([])
   const [loading, setLoading] = useState(true)
   const [notionConnected, setNotionConnected] = useState<boolean | null>(null)
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null)
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -29,6 +31,8 @@ export default function DailyLogsPage() {
       .then(d => {
         setLogs(d.logs || [])
         setNotionConnected(d.notionConnected ?? false)
+        setHasAccess(d.hasAccess ?? true)
+        setTrialDaysLeft(d.trialDaysLeft ?? null)
         if (d.error) setError(d.error)
         setLoading(false)
       })
@@ -58,15 +62,44 @@ export default function DailyLogsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-safety-green">DAILY LOGS</h1>
-            <p className="text-gray-400 mt-2">Voice-to-text daily field logs. AI-structured. Saved to your Notion.</p>
+
+        {/* Paywall overlay */}
+        {hasAccess === false && (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+            <div className="text-5xl mb-4">🔒</div>
+            <h2 className="font-display text-2xl font-bold text-safety-orange mb-2">Daily Logs — Trial Expired</h2>
+            <p className="text-gray-400 mb-2 max-w-sm">
+              Your 7-day free trial has ended. Subscribe to keep logging in the field.
+            </p>
+            <p className="text-3xl font-bold text-white mb-6">$19<span className="text-gray-400 text-base font-normal">/mo</span></p>
+            <Link href="/upgrade" className="btn-primary text-lg px-8 py-3">Start Subscription</Link>
+            <p className="text-xs text-gray-600 mt-4">Cancel anytime</p>
           </div>
-          {notionConnected && (
-            <Link href="/dust-logs/new" className="btn-primary">+ New Log</Link>
-          )}
-        </div>
+        )}
+
+        {hasAccess !== false && (
+          <>
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="font-display text-3xl font-bold text-safety-green">DAILY LOGS</h1>
+                <p className="text-gray-400 mt-2">Voice-to-text daily field logs. AI-structured. Saved to your Notion.</p>
+              </div>
+              {notionConnected && (
+                <Link href="/dust-logs/new" className="btn-primary">+ New Log</Link>
+              )}
+            </div>
+
+            {/* Trial banner */}
+            {trialDaysLeft !== null && trialDaysLeft <= 7 && trialDaysLeft > 0 && (
+              <div className="mb-6 p-3 bg-yellow-900/30 border border-yellow-500/50 flex justify-between items-center">
+                <p className="text-yellow-300 text-sm">
+                  <span className="font-bold">{trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} left</span> in your free trial — Subscribe to keep access
+                </p>
+                <Link href="/upgrade" className="text-xs text-yellow-400 hover:text-yellow-200 underline whitespace-nowrap ml-4">
+                  Subscribe →
+                </Link>
+              </div>
+            )}
 
         <div className="card mb-6 font-mono text-sm text-neon-green bg-black/50 border border-neon-green/30">
           <p className="text-neon-cyan font-bold">FIELD AI OPERATING RULES</p>
@@ -179,11 +212,13 @@ export default function DailyLogsPage() {
               </div>
               <div className="card text-center">
                 <Link href="/upgrade" className="block">
-                  <p className="text-3xl font-bold text-safety-yellow">$50/mo</p>
+                  <p className="text-3xl font-bold text-safety-yellow">$19/mo</p>
                   <p className="text-sm text-gray-400">for full AI pipeline</p>
                 </Link>
               </div>
             </div>
+          </>
+        )}
           </>
         )}
       </main>
