@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
 import { toFile } from 'openai'
+import { logWhisperUsage } from '@/lib/usage'
 
 // Whisper supports: mp3, mp4, mpeg, mpga, m4a, wav, webm, ogg, flac
 const ALLOWED_TYPES: Record<string, string> = {
@@ -90,6 +91,8 @@ export async function POST(request: NextRequest) {
       language: 'en',
       prompt: 'Construction site field log. Superintendent daily notes. Technical terms: rebar, pour, slab, footing, CMU, MEP, RFI, submittal, punch list, OSHA, GC, subcontractor.',
     })
+
+    await logWhisperUsage((session.user as any).id, audioFile.size)
 
     return NextResponse.json({
       transcript: transcription.text,

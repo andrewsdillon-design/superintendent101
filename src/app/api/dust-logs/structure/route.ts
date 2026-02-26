@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
+import { logGpt4oUsage } from '@/lib/usage'
 
 const FIELD_AI_SYSTEM_PROMPT = `You are a construction field documentation AI for Superintendent101.
 
@@ -84,6 +85,17 @@ Structure this field log. Extract only observations for the project above. If th
     })
 
     const structured = JSON.parse(completion.choices[0].message.content || '{}')
+
+    const usage = completion.usage
+    if (usage) {
+      await logGpt4oUsage(
+        (session.user as any).id,
+        'structure',
+        usage.prompt_tokens,
+        usage.completion_tokens,
+        projectName
+      )
+    }
 
     return NextResponse.json({ structured })
   } catch (err: any) {

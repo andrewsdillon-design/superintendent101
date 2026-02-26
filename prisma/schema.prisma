@@ -44,6 +44,7 @@ model User {
   bookings         Booking[]  @relation("MentorBookings")
   audioLogs        AudioLog[]
   jobSites         JobSite[]
+  apiUsageLogs     ApiUsageLog[]
 }
 
 enum Role {
@@ -208,6 +209,20 @@ model JobSite {
   notes        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model ApiUsageLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service       String   // "whisper" | "gpt4o"
+  action        String   // "transcribe" | "structure"
+  inputTokens   Int?
+  outputTokens  Int?
+  fileSizeBytes Int?
+  costUsd       Decimal  @db.Decimal(10, 6)
+  projectName   String?
+  createdAt     DateTime @default(now())
 }
 
 model PasswordResetToken {

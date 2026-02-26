@@ -57,6 +57,10 @@ export default function AdminPage() {
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
             <span className="text-safety-orange font-bold text-sm">ADMIN</span>
+            <nav className="flex gap-4 text-sm ml-4">
+              <span className="text-white font-semibold">Users</span>
+              <Link href="/admin/analytics" className="text-gray-400 hover:text-white">Analytics</Link>
+            </nav>
           </div>
           <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">← Dashboard</Link>
         </div>
