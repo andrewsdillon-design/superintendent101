@@ -33,16 +33,16 @@ export default function Home() {
 
       <section className="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-3 gap-6">
         <div className="card">
-          <h3 className="font-bold text-safety-blue mb-2">MENTOR NETWORK</h3>
-          <p className="text-sm text-gray-400">Connect with experienced superintendents.</p>
+          <h3 className="font-bold text-neon-cyan mb-2">COMMUNITY — FREE</h3>
+          <p className="text-sm text-gray-400">Network with field professionals and book mentors directly from the community.</p>
         </div>
         <div className="card">
-          <h3 className="font-bold text-safety-yellow mb-2">PROJECT PROFILES</h3>
-          <p className="text-sm text-gray-400">Document your project history.</p>
+          <h3 className="font-bold text-safety-orange mb-2">DAILY LOGS — $19/mo</h3>
+          <p className="text-sm text-gray-400">Voice-to-text field logs structured by AI and synced to your Notion workspace.</p>
         </div>
         <div className="card">
-          <h3 className="font-bold text-safety-green mb-2">DAILY LOGS</h3>
-          <p className="text-sm text-gray-400">Voice-to-text daily logs with AI.</p>
+          <h3 className="font-bold text-safety-yellow mb-2">REGISTER AS MENTOR — $39/mo</h3>
+          <p className="text-sm text-gray-400">List yourself as a mentor, accept bookings, and get paid in USDC by the community.</p>
         </div>
       </section>
     </div>

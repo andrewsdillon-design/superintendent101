@@ -5,7 +5,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 const PLAN_LABELS: Record<string, { name: string; price: string; color: string }> = {
-  PRO: { name: 'Mentorship', price: '$39/mo', color: 'text-safety-yellow' },
+  PRO: { name: 'Register as Mentor', price: '$39/mo', color: 'text-safety-yellow' },
   DUST_LOGS: { name: 'Daily Logs', price: '$19/mo (7-day free trial)', color: 'text-safety-orange' },
 }
 

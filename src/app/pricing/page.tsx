@@ -10,31 +10,13 @@ const tiers = [
     features: [
       'Community feed & posts',
       'Public profile',
-      'View mentor directory',
+      'Browse mentor directory',
+      'Book & pay for mentor sessions',
       'Project portfolio',
       'Basic networking',
     ],
     cta: 'Get Started Free',
     ctaStyle: 'btn-secondary',
-  },
-  {
-    name: 'MENTORSHIP',
-    plan: 'PRO',
-    price: '$39',
-    period: '/month',
-    color: 'text-safety-yellow',
-    border: 'border-safety-yellow',
-    highlight: true,
-    features: [
-      'Everything in Community',
-      'Book mentor sessions',
-      'USDC hour trading in-app',
-      'Mentor profile listing',
-      'Direct messaging',
-      'Booking management',
-    ],
-    cta: 'Join Mentorship',
-    ctaStyle: 'btn-primary',
   },
   {
     name: 'DAILY LOGS',
@@ -43,6 +25,7 @@ const tiers = [
     period: '/month',
     color: 'text-safety-orange',
     border: 'border-safety-orange',
+    highlight: true,
     features: [
       'Everything in Community',
       '7-day free trial',
@@ -53,6 +36,25 @@ const tiers = [
       'No files stored (privacy-first)',
     ],
     cta: 'Start Free Trial',
+    ctaStyle: 'btn-primary',
+  },
+  {
+    name: 'REGISTER AS MENTOR',
+    plan: 'PRO',
+    price: '$39',
+    period: '/month',
+    color: 'text-safety-yellow',
+    border: 'border-safety-yellow',
+    features: [
+      'Everything in Daily Logs',
+      'List yourself as a mentor',
+      'Accept booking requests',
+      'Set your hourly rate',
+      'USDC peer-to-peer payments',
+      'Booking management dashboard',
+      'Direct messaging',
+    ],
+    cta: 'Register as Mentor',
     ctaStyle: 'btn-primary',
   },
 ]
@@ -88,11 +90,11 @@ export default function PricingPage() {
           {tiers.map(tier => (
             <div
               key={tier.name}
-              className={`card border-2 ${tier.border} ${tier.highlight ? 'ring-2 ring-safety-yellow/20' : ''} flex flex-col`}
+              className={`card border-2 ${tier.border} ${tier.highlight ? 'ring-2 ring-safety-orange/20' : ''} flex flex-col`}
             >
               <div>
                 {tier.highlight && (
-                  <div className="text-xs text-safety-yellow font-bold mb-2 uppercase tracking-wider">Most Popular</div>
+                  <div className="text-xs text-safety-orange font-bold mb-2 uppercase tracking-wider">Most Popular</div>
                 )}
                 <h2 className={`font-display text-xl font-bold ${tier.color} mb-1`}>{tier.name}</h2>
                 <div className="flex items-baseline gap-1 mb-6">

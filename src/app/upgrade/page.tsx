@@ -15,31 +15,13 @@ const tiers = [
     features: [
       'Community feed & posts',
       'Public profile',
-      'View mentor directory',
+      'Browse mentor directory',
+      'Book & pay for mentor sessions',
       'Project portfolio',
       'Basic networking',
     ],
     cta: 'Current Plan',
     ctaStyle: 'btn-secondary',
-  },
-  {
-    name: 'MENTORSHIP',
-    tier: 'PRO' as const,
-    price: '$39',
-    period: '/month',
-    color: 'text-safety-yellow',
-    border: 'border-safety-yellow',
-    features: [
-      'Everything in Community',
-      'Book mentor sessions',
-      'USDC hour trading in-app',
-      'Mentor profile listing',
-      'Direct messaging',
-      'Booking management',
-    ],
-    cta: 'Upgrade to Mentorship',
-    ctaStyle: 'btn-primary',
-    highlight: true,
   },
   {
     name: 'DAILY LOGS',
@@ -48,18 +30,37 @@ const tiers = [
     period: '/month',
     color: 'text-safety-orange',
     border: 'border-safety-orange',
+    highlight: true,
     features: [
-      'Everything in Mentorship',
+      'Everything in Community',
       '7-day free trial',
       'Voice-to-text field logging',
       'AI-powered log structuring',
       'Notion workspace sync',
-      'Google NotebookLM sync',
       'Custom AI field prompts',
       'No files stored (privacy-first)',
       'SOC 2 compliant pipeline',
     ],
     cta: 'Upgrade to Daily Logs',
+    ctaStyle: 'btn-primary',
+  },
+  {
+    name: 'REGISTER AS MENTOR',
+    tier: 'PRO' as const,
+    price: '$39',
+    period: '/month',
+    color: 'text-safety-yellow',
+    border: 'border-safety-yellow',
+    features: [
+      'Everything in Daily Logs',
+      'List yourself as a mentor',
+      'Accept booking requests',
+      'Set your hourly rate',
+      'USDC peer-to-peer payments',
+      'Booking management dashboard',
+      'Direct messaging',
+    ],
+    cta: 'Register as Mentor',
     ctaStyle: 'btn-primary',
   },
 ]
@@ -146,7 +147,7 @@ export default function UpgradePage() {
             return (
               <div
                 key={tier.name}
-                className={`card border-2 ${tier.border} ${tier.highlight ? 'ring-2 ring-safety-yellow/20' : ''} flex flex-col`}
+                className={`card border-2 ${tier.border} ${tier.highlight ? 'ring-2 ring-safety-orange/20' : ''} flex flex-col`}
               >
                 <div>
                   <h2 className={`font-display text-xl font-bold ${tier.color} mb-1`}>{tier.name}</h2>
@@ -209,7 +210,7 @@ export default function UpgradePage() {
               <p className="text-gray-400 text-xs">5% platform fee on mentorship transactions. No fees for community features.</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">* USDC payments require Mentorship tier ($39/mo). Coming soon.</p>
+          <p className="text-xs text-gray-500 mt-3">* USDC payments require Mentor tier ($39/mo). Coming soon.</p>
         </div>
 
         <div className="mt-6 card">

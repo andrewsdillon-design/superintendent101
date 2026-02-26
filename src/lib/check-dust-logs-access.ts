@@ -8,6 +8,7 @@ export async function checkDustLogsAccess(userId: string): Promise<boolean> {
   if (!user) return false
   return (
     user.subscription === 'DUST_LOGS' ||
+    user.subscription === 'PRO' ||
     user.trialEndsAt === null ||
     user.trialEndsAt > new Date()
   )

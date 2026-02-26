@@ -11,9 +11,9 @@ function initials(name: string) {
 }
 
 const tierLabel: Record<string, string> = {
-  FREE: 'FREE TIER',
-  PRO: 'MENTORSHIP — $20/mo',
-  DUST_LOGS: 'DAILY LOGS — $50/mo',
+  FREE: 'COMMUNITY — FREE',
+  PRO: 'MENTOR — $39/mo',
+  DUST_LOGS: 'DAILY LOGS — $19/mo',
 }
 
 const tierColor: Record<string, string> = {
@@ -43,7 +43,7 @@ function ProfileContent() {
   const [notionDbError, setNotionDbError] = useState('')
 
   useEffect(() => {
-    if (subscription === 'DUST_LOGS') {
+    if (subscription === 'DUST_LOGS' || subscription === 'PRO') {
       fetch('/api/integrations/notion')
         .then(r => r.json())
         .then(d => {
@@ -212,16 +212,16 @@ function ProfileContent() {
                   <span>Community feed &amp; profile — FREE</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={subscription === 'PRO' || subscription === 'DUST_LOGS' ? 'text-safety-green' : 'text-gray-600'}>
-                    {subscription === 'PRO' || subscription === 'DUST_LOGS' ? '✓' : '○'}
+                  <span className={subscription === 'DUST_LOGS' || subscription === 'PRO' ? 'text-safety-green' : 'text-gray-600'}>
+                    {subscription === 'DUST_LOGS' || subscription === 'PRO' ? '✓' : '○'}
                   </span>
-                  <span>Mentorship access + USDC hour trading — $20/mo</span>
+                  <span>Daily Logs — voice AI + Notion sync — $19/mo</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={subscription === 'DUST_LOGS' ? 'text-safety-green' : 'text-gray-600'}>
-                    {subscription === 'DUST_LOGS' ? '✓' : '○'}
+                  <span className={subscription === 'PRO' ? 'text-safety-green' : 'text-gray-600'}>
+                    {subscription === 'PRO' ? '✓' : '○'}
                   </span>
-                  <span>Daily Logs voice AI + Notion/NotebookLM sync — $50/mo</span>
+                  <span>Mentor listing — accept bookings + USDC payments — $39/mo</span>
                 </div>
               </div>
             </div>
@@ -246,7 +246,7 @@ function ProfileContent() {
                 <p className="font-semibold text-sm">Notion</p>
                 <p className="text-xs text-gray-500">Sync Daily Logs to your Notion workspace</p>
               </div>
-              {subscription === 'DUST_LOGS' ? (
+              {subscription === 'DUST_LOGS' || subscription === 'PRO' ? (
                 notionConnected ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-safety-green">Connected</span>
@@ -309,8 +309,8 @@ function ProfileContent() {
               </div>
             )}
           </div>
-          {subscription !== 'DUST_LOGS' && (
-            <p className="text-xs text-gray-500 mt-4">Integrations require Daily Logs tier ($50/mo)</p>
+          {subscription !== 'DUST_LOGS' && subscription !== 'PRO' && (
+            <p className="text-xs text-gray-500 mt-4">Integrations require Daily Logs tier ($19/mo)</p>
           )}
         </div>
       </main>
