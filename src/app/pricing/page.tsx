@@ -69,7 +69,6 @@ export default function PricingPage() {
           </Link>
           <div className="flex gap-2 sm:gap-4">
             <Link href="/login" className="btn-secondary text-sm sm:text-base">Sign In</Link>
-            <Link href="/register" className="btn-primary text-sm sm:text-base">Join Now</Link>
           </div>
         </div>
       </header>
