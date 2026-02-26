@@ -10,7 +10,7 @@ export default function Home() {
           </h1>
           <div className="flex gap-2 sm:gap-4">
             <Link href="/login" className="btn-secondary text-sm sm:text-base">Sign In</Link>
-            <Link href="/register" className="btn-primary text-sm sm:text-base">Join Now</Link>
+            <Link href="/pricing" className="btn-primary text-sm sm:text-base">Join Now</Link>
           </div>
         </div>
       </header>
@@ -25,7 +25,7 @@ export default function Home() {
           A no-nonsense network for construction professionals.
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/register" className="btn-primary text-base sm:text-lg px-6 sm:px-8">
+          <Link href="/pricing" className="btn-primary text-base sm:text-lg px-6 sm:px-8">
             Get Started
           </Link>
         </div>
