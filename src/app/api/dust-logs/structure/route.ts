@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
 import { logGpt4oUsage } from '@/lib/usage'
 import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
@@ -40,12 +38,12 @@ OUTPUT FORMAT (JSON):
 }`
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
+  const { getUserId } = await import('@/lib/get-user-id')
+  const userId = await getUserId(request)
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id
   const hasAccess = await checkDustLogsAccess(userId)
   if (!hasAccess) {
     return NextResponse.json(
@@ -99,7 +97,7 @@ Structure this field log. Extract only observations for the project above. If th
     const usage = completion.usage
     if (usage) {
       await logGpt4oUsage(
-        (session.user as any).id,
+        userId,
         'structure',
         usage.prompt_tokens,
         usage.completion_tokens,

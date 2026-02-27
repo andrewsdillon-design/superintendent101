@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import OpenAI from 'openai'
 import { toFile } from 'openai'
 import { logWhisperUsage } from '@/lib/usage'
@@ -37,12 +35,12 @@ function resolveExtension(file: File): string {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
+  const { getUserId } = await import('@/lib/get-user-id')
+  const userId = await getUserId(request)
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id
   const hasAccess = await checkDustLogsAccess(userId)
   if (!hasAccess) {
     return NextResponse.json(
@@ -102,7 +100,7 @@ export async function POST(request: NextRequest) {
       prompt: 'Construction site field log. Superintendent daily notes. Technical terms: rebar, pour, slab, footing, CMU, MEP, RFI, submittal, punch list, OSHA, GC, subcontractor.',
     })
 
-    await logWhisperUsage((session.user as any).id, audioFile.size)
+    await logWhisperUsage(userId, audioFile.size)
 
     return NextResponse.json({
       transcript: transcription.text,

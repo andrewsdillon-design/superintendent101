@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { pushLogToNotion, findBestDatabase } from '@/lib/notion'
 import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
@@ -8,12 +6,12 @@ import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
 // Full pipeline: receives structured log + pushes to user's Notion workspace.
 // No data is stored on our system — Notion is the only destination.
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
+  const { getUserId } = await import('@/lib/get-user-id')
+  const userId = await getUserId(request)
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id
   const hasAccess = await checkDustLogsAccess(userId)
   if (!hasAccess) {
     return NextResponse.json(
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: (session.user as any).id },
+    where: { id: userId },
     select: { notionToken: true, notionDbId: true },
   })
 

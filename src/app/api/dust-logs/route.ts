@@ -1,17 +1,16 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { fetchLogsFromNotion } from '@/lib/notion'
+import { getUserId } from '@/lib/get-user-id'
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
+export async function GET(req: NextRequest) {
+  const userId = await getUserId(req)
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: (session.user as any).id },
+    where: { id: userId },
     select: { notionToken: true, notionDbId: true, subscription: true, trialEndsAt: true },
   })
 
