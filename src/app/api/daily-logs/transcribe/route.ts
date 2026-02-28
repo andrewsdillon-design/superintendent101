@@ -11,7 +11,7 @@ const grok = new OpenAI({
   baseURL: 'https://api.x.ai/v1',
 })
 
-const GROK_MODEL = 'grok-4-1-fast-non-reasoning'
+const GROK_MODEL = 'grok-4-1-fast-reasoning'
 
 const SYSTEM_PROMPT = `You are a construction field log assistant. Extract structured daily log data from this superintendent's voice notes.
 
