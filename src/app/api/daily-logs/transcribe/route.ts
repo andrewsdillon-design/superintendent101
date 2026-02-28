@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI, { toFile } from 'openai'
 import { getUserId } from '@/lib/get-user-id'
 
-// OpenAI Whisper for transcription
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
-
-// xAI Grok 4.1 Fast for structuring (OpenAI-compatible API)
-const grok = new OpenAI({
-  apiKey: process.env.XAI_API_KEY ?? '',
-  baseURL: 'https://api.x.ai/v1',
-})
-
-const GROK_MODEL = 'grok-4-1-fast-reasoning'
 
 const SYSTEM_PROMPT = `You are a construction field log assistant. Extract structured daily log data from this superintendent's voice notes.
 
@@ -43,6 +34,8 @@ const ALLOWED_TYPES: Record<string, string> = {
   'audio/x-wav': 'wav',
   'audio/webm': 'webm',
   'audio/ogg': 'ogg',
+  'audio/flac': 'flac',
+  'video/mp4': 'mp4',
   'video/quicktime': 'mp4',
 }
 
@@ -52,9 +45,6 @@ export async function POST(req: NextRequest) {
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 503 })
-  }
-  if (!process.env.XAI_API_KEY) {
-    return NextResponse.json({ error: 'XAI_API_KEY not configured' }, { status: 503 })
   }
 
   let formData: FormData
@@ -84,18 +74,18 @@ export async function POST(req: NextRequest) {
 
     const transcription = await openai.audio.transcriptions.create({
       file,
-      model: 'gpt-4o-mini-transcribe',
+      model: 'whisper-1',
       language: 'en',
     })
 
     const transcript = transcription.text?.trim()
     if (!transcript) {
-      return NextResponse.json({ error: 'Could not transcribe audio' }, { status: 422 })
+      return NextResponse.json({ error: 'Could not transcribe audio — try speaking more clearly or uploading a cleaner recording.' }, { status: 422 })
     }
 
-    // Step 2: Structure with Grok 4.1 Fast
-    const completion = await grok.chat.completions.create({
-      model: GROK_MODEL,
+    // Step 2: Structure with GPT-4o-mini
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: transcript },

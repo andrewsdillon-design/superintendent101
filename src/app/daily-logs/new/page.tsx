@@ -68,6 +68,7 @@ function NewDailyLogForm() {
   const [transcribeError, setTranscribeError] = useState('')
   const [transcript, setTranscript] = useState('')
   const [showTranscript, setShowTranscript] = useState(false)
+  const [audioFileName, setAudioFileName] = useState('')
 
   // Submission
   const [submitting, setSubmitting] = useState(false)
@@ -77,6 +78,8 @@ function NewDailyLogForm() {
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const audioInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/projects')
@@ -135,7 +138,7 @@ function NewDailyLogForm() {
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop())
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        await transcribeAudio(blob)
+        await transcribeBlob(blob, 'field-note.webm')
       }
 
       recorder.start(1000)
@@ -154,11 +157,22 @@ function NewDailyLogForm() {
     setTranscribeState('transcribing')
   }
 
-  async function transcribeAudio(blob: Blob) {
+  // ── Audio file upload ─────────────────────────────────────────────────
+  function handleAudioFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAudioFileName(file.name)
+    setTranscribeError('')
+    setTranscribeState('transcribing')
+    transcribeBlob(file, file.name)
+    e.target.value = ''
+  }
+
+  async function transcribeBlob(blob: Blob, filename: string) {
     setTranscribeState('transcribing')
     setTranscribeError('')
     const fd = new FormData()
-    fd.append('audio', blob, 'field-note.webm')
+    fd.append('audio', blob, filename)
     try {
       const res = await fetch('/api/daily-logs/transcribe', { method: 'POST', body: fd })
       const data = await res.json()
@@ -187,12 +201,20 @@ function NewDailyLogForm() {
     }
   }
 
-  // ── Photo handling ────────────────────────────────────────────────────
-  const onPhotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    setPhotoFiles(prev => [...prev, ...files].slice(0, 10))
-    e.target.value = ''
+  // ── Photo / file handling ─────────────────────────────────────────────
+  const addFiles = useCallback((incoming: File[]) => {
+    setPhotoFiles(prev => [...prev, ...incoming].slice(0, 10))
   }, [])
+
+  const onPhotoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(e.target.files || []))
+    e.target.value = ''
+  }, [addFiles])
+
+  const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(e.target.files || []))
+    e.target.value = ''
+  }, [addFiles])
 
   function removePhoto(index: number) {
     setPhotoFiles(prev => prev.filter((_, i) => i !== index))
@@ -281,17 +303,40 @@ function NewDailyLogForm() {
 
         {/* Voice Transcription Banner */}
         <div className={`card mb-6 border-2 ${transcribeState === 'done' ? 'border-safety-green' : 'border-safety-orange/50'}`}>
-          <h3 className="font-bold text-safety-orange text-sm uppercase mb-3">Voice Transcription</h3>
+          <h3 className="font-bold text-safety-orange text-sm uppercase mb-3">🎙 Voice Transcription</h3>
           {transcribeError && (
             <div className="mb-3 text-sm text-red-400 p-2 bg-red-900/20 border border-red-500/30">
               {transcribeError}
             </div>
           )}
+
           {transcribeState === 'idle' && (
-            <button type="button" onClick={startRecording} className="btn-primary w-full">
-              ● Start Recording
-            </button>
+            <div className="space-y-3">
+              {/* Record from mic */}
+              <button type="button" onClick={startRecording} className="btn-primary w-full">
+                ● Record Field Notes
+              </button>
+              {/* Upload audio file */}
+              <div className="relative">
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac,.wma,.opus"
+                  onChange={handleAudioFileChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => audioInputRef.current?.click()}
+                  className="btn-secondary w-full text-sm"
+                >
+                  ↑ Upload Audio File
+                </button>
+              </div>
+              <p className="text-xs text-gray-600 text-center">MP3, M4A, WAV, OGG, FLAC — max 25MB</p>
+            </div>
           )}
+
           {transcribeState === 'recording' && (
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center gap-3">
@@ -304,12 +349,15 @@ function NewDailyLogForm() {
               </button>
             </div>
           )}
+
           {transcribeState === 'transcribing' && (
             <div className="text-center py-4">
               <p className="font-mono text-neon-cyan animate-pulse">⟳ Transcribing &amp; structuring...</p>
-              <p className="text-xs text-gray-500 mt-2">Whisper + AI filling your form fields</p>
+              {audioFileName && <p className="text-xs text-gray-500 mt-1">{audioFileName}</p>}
+              <p className="text-xs text-gray-500 mt-2">Whisper → GPT-4o-mini filling your form fields</p>
             </div>
           )}
+
           {transcribeState === 'done' && (
             <div>
               <p className="text-safety-green text-sm font-semibold mb-2">✓ Form auto-filled from voice note</p>
@@ -331,10 +379,10 @@ function NewDailyLogForm() {
               )}
               <button
                 type="button"
-                onClick={() => { setTranscribeState('idle'); setTranscript(''); setTranscribeError('') }}
+                onClick={() => { setTranscribeState('idle'); setTranscript(''); setTranscribeError(''); setAudioFileName('') }}
                 className="text-xs text-gray-500 hover:text-white mt-2 block"
               >
-                Re-record
+                Re-record / Upload different file
               </button>
             </div>
           )}
@@ -529,23 +577,40 @@ function NewDailyLogForm() {
             />
           </div>
 
-          {/* Photos */}
+          {/* Photos & Files */}
           <div>
-            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-2">Photos</label>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-2">Site Photos &amp; Files</label>
+
+            {/* Hidden inputs */}
             <input
               ref={photoInputRef}
               type="file"
               accept="image/*"
               multiple
+              capture="environment"
               onChange={onPhotoChange}
               className="hidden"
             />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,.pdf,.heic,.heif,.png,.jpg,.jpeg"
+              multiple
+              onChange={onFileChange}
+              className="hidden"
+            />
+
+            {/* Thumbnails */}
             {photoFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {photoFiles.map((f, i) => (
                   <div key={i} className="relative">
-                    <div className="w-16 h-16 bg-blueprint-paper border border-blueprint-grid overflow-hidden">
-                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-full object-cover" />
+                    <div className="w-16 h-16 bg-blueprint-paper border border-blueprint-grid overflow-hidden flex items-center justify-center">
+                      {f.type.startsWith('image/') ? (
+                        <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-gray-400 text-center px-1 break-all leading-tight">{f.name.split('.').pop()?.toUpperCase()}</span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -558,10 +623,26 @@ function NewDailyLogForm() {
                 ))}
               </div>
             )}
-            <button type="button" onClick={() => photoInputRef.current?.click()} className="btn-secondary text-sm">
-              + Add Photos
-            </button>
-            <p className="text-xs text-gray-600 mt-1">Max 10 photos</p>
+
+            <div className="flex gap-2">
+              {/* Primary: opens phone camera/photos */}
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="btn-primary text-sm flex-1"
+              >
+                📷 Camera / Photos
+              </button>
+              {/* Secondary: opens file browser (shows all files + photos) */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-secondary text-sm flex-1"
+              >
+                📁 Browse Files
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mt-1">Max 10 files total</p>
           </div>
 
           {submitError && (
