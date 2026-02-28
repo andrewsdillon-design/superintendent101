@@ -5,6 +5,15 @@ import { usePathname } from 'next/navigation'
 
 const navItems = [
   {
+    href: '/projects',
+    label: 'Projects',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+        <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
     href: '/daily-logs',
     label: 'History',
     icon: (
@@ -41,7 +50,10 @@ export default function MobileNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-blueprint-bg border-t border-blueprint-grid">
       <div className="flex items-stretch">
         {navItems.map(item => {
-          const isActive = pathname === item.href || (item.href !== '/daily-logs' && pathname.startsWith(item.href + '/'))
+          const isActive = pathname === item.href ||
+            (item.href !== '/daily-logs' && item.href !== '/projects' && pathname.startsWith(item.href + '/')) ||
+            (item.href === '/projects' && pathname.startsWith('/projects')) ||
+            (item.href === '/daily-logs' && pathname === '/daily-logs')
           return (
             <Link
               key={item.href}

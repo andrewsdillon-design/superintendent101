@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import type { NextRequest } from 'next/server'
 
-const HIDDEN_ROUTES = ['/mentors', '/wallet', '/messages', '/projects']
+const HIDDEN_ROUTES = ['/mentors', '/wallet', '/messages']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Redirect legacy /dust-logs to /daily-logs (keep backward compat)
   if (pathname.startsWith('/dust-logs')) {
-    const rest = pathname.slice('/dust-logs'.length) // e.g. '/new' or ''
+    const rest = pathname.slice('/dust-logs'.length)
     return NextResponse.redirect(new URL(`/daily-logs${rest}`, request.url))
   }
 
@@ -43,10 +43,10 @@ export const config = {
     '/profile/:path*',
     '/projects/:path*',
     '/messages/:path*',
+    '/mentors/:path*',
     '/dust-logs/:path*',
     '/daily-logs/:path*',
     '/wallet/:path*',
-    '/mentors/:path*',
     '/admin/:path*',
     '/upgrade/:path*',
   ],

@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
-import { signOut } from 'next-auth/react'
-import { useSession } from 'next-auth/react'
+import { useState, useEffect, Suspense } from 'react'
+import { signOut, useSession } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import MobileNav from '@/components/mobile-nav'
 
 interface DailyLog {
@@ -12,13 +12,14 @@ interface DailyLog {
   weather: string
   crewCounts: Record<string, number>
   workPerformed: string
-  deliveries: string
-  inspections: string
-  issues: string
-  safetyNotes: string
-  photoUrls: string[]
   project?: { id: string; title: string } | null
   createdAt: string
+}
+
+interface Project {
+  id: string
+  title: string
+  status: string
 }
 
 function formatDate(dateStr: string) {
@@ -31,26 +32,42 @@ function crewTotal(counts: Record<string, number>): number {
   return Object.values(counts).reduce((s, n) => s + (n || 0), 0)
 }
 
-export default function DailyLogsPage() {
+function DailyLogsContent() {
   const { data: session } = useSession()
   const user = session?.user as any
   const role = user?.role
   const subscription = user?.subscription ?? 'FREE'
   const isSubscribed = subscription === 'DUST_LOGS' || subscription === 'PRO'
 
+  const searchParams = useSearchParams()
+  const projectIdParam = searchParams.get('projectId')
+
   const [logs, setLogs] = useState<DailyLog[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [projectFilter, setProjectFilter] = useState(projectIdParam ?? '')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/daily-logs')
+    fetch('/api/projects')
+      .then(r => r.json())
+      .then(d => setProjects(d.projects ?? []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const url = projectFilter
+      ? `/api/daily-logs?projectId=${projectFilter}`
+      : '/api/daily-logs'
+    setLoading(true)
+    fetch(url)
       .then(r => r.json())
       .then(d => {
         setLogs(d.logs || [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [])
+  }, [projectFilter])
 
   const handleDownloadPdf = async (log: DailyLog) => {
     setDownloadingId(log.id)
@@ -71,6 +88,8 @@ export default function DailyLogsPage() {
     }
   }
 
+  const activeProject = projects.find(p => p.id === projectFilter)
+
   return (
     <div className="min-h-screen blueprint-bg">
       <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0 z-10">
@@ -78,6 +97,7 @@ export default function DailyLogsPage() {
           <div className="flex items-center gap-6">
             <Link href="/daily-logs" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
             <nav className="hidden md:flex gap-4 text-sm">
+              <Link href="/projects" className="text-gray-400 hover:text-white">Projects</Link>
               <Link href="/daily-logs" className="text-white font-semibold">Daily Logs</Link>
               <Link href="/daily-logs/new" className="text-gray-400 hover:text-white">New Log</Link>
             </nav>
@@ -96,7 +116,6 @@ export default function DailyLogsPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
 
-        {/* Paywall */}
         {!isSubscribed && session && (
           <div className="mb-6 p-4 bg-yellow-900/30 border border-yellow-500/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <p className="text-yellow-300 text-sm">
@@ -108,25 +127,71 @@ export default function DailyLogsPage() {
           </div>
         )}
 
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="font-display text-3xl font-bold text-safety-green">DAILY LOGS</h1>
-            <p className="text-gray-400 mt-1">Your complete field log history.</p>
+            {activeProject && (
+              <p className="text-safety-yellow text-sm mt-1 font-semibold">{activeProject.title}</p>
+            )}
+            {!activeProject && (
+              <p className="text-gray-400 mt-1">All projects</p>
+            )}
           </div>
-          <Link href="/daily-logs/new" className="btn-primary">+ New Log</Link>
+          <Link
+            href={projectFilter ? `/daily-logs/new?projectId=${projectFilter}` : '/daily-logs/new'}
+            className="btn-primary"
+          >
+            + New Log
+          </Link>
         </div>
+
+        {/* Project filter */}
+        {projects.length > 0 && (
+          <div className="mb-6 flex gap-2 flex-wrap">
+            <button
+              onClick={() => setProjectFilter('')}
+              className={`text-xs px-3 py-1.5 border transition-colors ${
+                !projectFilter
+                  ? 'border-neon-cyan text-neon-cyan bg-neon-cyan/10'
+                  : 'border-blueprint-grid text-gray-400 hover:border-gray-400'
+              }`}
+            >
+              All Projects
+            </button>
+            {projects.map(p => (
+              <button
+                key={p.id}
+                onClick={() => setProjectFilter(p.id)}
+                className={`text-xs px-3 py-1.5 border transition-colors ${
+                  projectFilter === p.id
+                    ? 'border-safety-yellow text-safety-yellow bg-safety-yellow/10'
+                    : 'border-blueprint-grid text-gray-400 hover:border-gray-400'
+                }`}
+              >
+                {p.title}
+              </button>
+            ))}
+            <Link href="/projects" className="text-xs px-3 py-1.5 border border-dashed border-blueprint-grid text-gray-500 hover:text-gray-300 transition-colors">
+              + Manage Projects
+            </Link>
+          </div>
+        )}
 
         {loading ? (
           <div className="card text-center text-gray-400 py-12">Loading logs...</div>
         ) : logs.length === 0 ? (
           <div className="card text-center py-16">
-            <p className="text-gray-400 text-lg mb-2">No logs yet.</p>
+            <p className="text-gray-400 text-lg mb-2">No logs yet{activeProject ? ` for ${activeProject.title}` : ''}.</p>
             <p className="text-gray-500 text-sm mb-6">Start by recording your first daily log.</p>
-            <Link href="/daily-logs/new" className="btn-primary text-sm">Create First Log</Link>
+            <Link
+              href={projectFilter ? `/daily-logs/new?projectId=${projectFilter}` : '/daily-logs/new'}
+              className="btn-primary text-sm"
+            >
+              Create First Log
+            </Link>
           </div>
         ) : (
           <>
-            {/* Stats row */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
               <div className="card text-center">
                 <p className="text-3xl font-bold text-neon-cyan">{logs.length}</p>
@@ -139,19 +204,20 @@ export default function DailyLogsPage() {
                 <p className="text-xs text-gray-400 mt-1">Total Crew Days</p>
               </div>
               <div className="card text-center hidden sm:block">
-                <p className="text-3xl font-bold text-safety-orange">{logs.filter(l => l.photoUrls?.length > 0).length}</p>
-                <p className="text-xs text-gray-400 mt-1">Logs with Photos</p>
+                <p className="text-3xl font-bold text-safety-yellow">{projects.length}</p>
+                <p className="text-xs text-gray-400 mt-1">Projects</p>
               </div>
             </div>
 
-            {/* Log table */}
+            {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-blueprint-grid text-xs text-gray-500 uppercase tracking-wide">
                     <th className="text-left py-3 pr-4">Date</th>
+                    <th className="text-left py-3 pr-4">Project</th>
                     <th className="text-left py-3 pr-4">Weather</th>
-                    <th className="text-left py-3 pr-4">Crew Total</th>
+                    <th className="text-left py-3 pr-4">Crew</th>
                     <th className="text-left py-3 pr-4">Work Performed</th>
                     <th className="text-right py-3">PDF</th>
                   </tr>
@@ -161,6 +227,9 @@ export default function DailyLogsPage() {
                     <tr key={log.id} className="hover:bg-blueprint-paper/10 transition-colors">
                       <td className="py-3 pr-4 text-white font-semibold whitespace-nowrap">
                         {formatDate(log.date)}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-400 whitespace-nowrap">
+                        {log.project?.title ?? <span className="text-gray-600">—</span>}
                       </td>
                       <td className="py-3 pr-4 text-gray-300 whitespace-nowrap">
                         {log.weather || '—'}
@@ -186,13 +255,16 @@ export default function DailyLogsPage() {
               </table>
             </div>
 
-            {/* Mobile card list */}
+            {/* Mobile cards */}
             <div className="md:hidden space-y-4">
               {logs.map(log => (
                 <div key={log.id} className="card">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white">{formatDate(log.date)}</p>
+                      {log.project?.title && (
+                        <p className="text-xs text-safety-yellow mt-0.5">{log.project.title}</p>
+                      )}
                       <div className="flex gap-3 mt-1 flex-wrap text-xs text-gray-400">
                         {log.weather && <span>{log.weather}</span>}
                         {crewTotal(log.crewCounts || {}) > 0 && (
@@ -219,5 +291,13 @@ export default function DailyLogsPage() {
       </main>
       <MobileNav />
     </div>
+  )
+}
+
+export default function DailyLogsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen blueprint-bg" />}>
+      <DailyLogsContent />
+    </Suspense>
   )
 }

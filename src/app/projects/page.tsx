@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import MobileNav from '@/components/mobile-nav'
+import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 
 interface Project {
@@ -30,6 +31,10 @@ const BLANK_FORM = {
 }
 
 export default function ProjectsPage() {
+  const { data: session } = useSession()
+  const user = session?.user as any
+  const role = user?.role
+
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -87,18 +92,25 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen blueprint-bg">
-      <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0">
+      <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
+            <Link href="/daily-logs" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
             <nav className="hidden md:flex gap-4 text-sm">
-              <Link href="/dashboard" className="text-gray-400">Feed</Link>
-              <Link href="/mentors" className="text-gray-400">Mentors</Link>
               <Link href="/projects" className="text-white font-semibold">Projects</Link>
-              <Link href="/dust-logs" className="text-gray-400">Daily Logs</Link>
+              <Link href="/daily-logs" className="text-gray-400 hover:text-white">Daily Logs</Link>
+              <Link href="/daily-logs/new" className="text-gray-400 hover:text-white">New Log</Link>
             </nav>
           </div>
-          <Link href="/profile" className="text-sm text-gray-400">Profile</Link>
+          <div className="flex items-center gap-4">
+            {role === 'ADMIN' && (
+              <Link href="/admin" className="text-xs text-safety-orange hover:underline hidden sm:block">Admin</Link>
+            )}
+            <Link href="/profile" className="text-sm text-gray-400 hover:text-white hidden sm:block">Profile</Link>
+            <button onClick={() => signOut({ callbackUrl: '/' })} className="text-sm text-gray-400 hover:text-white">
+              Sign Out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -106,7 +118,7 @@ export default function ProjectsPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="font-display text-3xl font-bold text-safety-yellow">PROJECTS</h1>
-            <p className="text-gray-400 mt-2">Document your project history. Get found.</p>
+            <p className="text-gray-400 mt-1">Manage your job sites. Daily logs are filed under each project.</p>
           </div>
           <button onClick={() => setShowModal(true)} className="btn-primary">+ Add Project</button>
         </div>
@@ -114,13 +126,13 @@ export default function ProjectsPage() {
         <div className="card mb-6 grid md:grid-cols-3 gap-4">
           <input
             type="text"
-            className="bg-blueprint-bg border border-blueprint-grid p-2 text-white"
+            className="bg-blueprint-bg border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
             placeholder="Search projects..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
           <select
-            className="bg-blueprint-bg border border-blueprint-grid p-2 text-white"
+            className="bg-blueprint-bg border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
           >
@@ -140,13 +152,13 @@ export default function ProjectsPage() {
         ) : displayed.length === 0 ? (
           <div className="card text-center py-16">
             <p className="text-gray-400 text-lg">No projects yet.</p>
-            <p className="text-gray-500 text-sm mt-2">Add your first project to start building your portfolio.</p>
-            <button onClick={() => setShowModal(true)} className="btn-primary mt-4 text-sm">+ Add Project</button>
+            <p className="text-gray-500 text-sm mt-2 mb-6">Create a project to organize your daily logs by job site.</p>
+            <button onClick={() => setShowModal(true)} className="btn-primary text-sm">+ Add Project</button>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayed.map((project) => (
-              <div key={project.id} className="card">
+              <div key={project.id} className="card flex flex-col">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-semibold text-lg leading-tight">{project.title}</h3>
                   <span className={STATUS_COLORS[project.status] ?? 'text-xs text-gray-400'}>{project.status}</span>
@@ -155,7 +167,7 @@ export default function ProjectsPage() {
                 {project.description && (
                   <p className="text-xs text-gray-400 mt-2 line-clamp-2">{project.description}</p>
                 )}
-                <div className="mt-4 flex gap-4 text-sm text-gray-400">
+                <div className="mt-2 flex gap-4 text-sm text-gray-400 flex-wrap">
                   {project.type && <span>{project.type}</span>}
                   {project.sqft && <span>{project.sqft.toLocaleString()} sqft</span>}
                 </div>
@@ -166,9 +178,19 @@ export default function ProjectsPage() {
                     {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'present'}
                   </p>
                 )}
-                <div className="mt-4 pt-4 border-t border-blueprint-grid flex justify-between">
-                  <button className="btn-secondary text-sm">View Details</button>
-                  <button className="text-sm text-gray-400 hover:text-white">Edit</button>
+                <div className="mt-auto pt-4 border-t border-blueprint-grid flex gap-2 mt-4">
+                  <Link
+                    href={`/daily-logs?projectId=${project.id}`}
+                    className="btn-secondary text-xs flex-1 text-center"
+                  >
+                    View Logs
+                  </Link>
+                  <Link
+                    href={`/daily-logs/new?projectId=${project.id}`}
+                    className="btn-primary text-xs flex-1 text-center"
+                  >
+                    + New Log
+                  </Link>
                 </div>
               </div>
             ))}
@@ -213,11 +235,11 @@ export default function ProjectsPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Project Name *</label>
+                  <label className="block text-xs text-gray-400 uppercase mb-1">Project Name *</label>
                   <input
                     required
                     type="text"
-                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white"
+                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
                     placeholder="e.g. Target Store #2847"
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -226,9 +248,9 @@ export default function ProjectsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Type</label>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Type</label>
                     <select
-                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white"
+                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
                       value={form.type}
                       onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                     >
@@ -244,9 +266,9 @@ export default function ProjectsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Status</label>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Status</label>
                     <select
-                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white"
+                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
                       value={form.status}
                       onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                     >
@@ -259,10 +281,10 @@ export default function ProjectsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Location</label>
+                  <label className="block text-xs text-gray-400 uppercase mb-1">Location</label>
                   <input
                     type="text"
-                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white"
+                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
                     placeholder="City, State"
                     value={form.location}
                     onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
@@ -270,10 +292,10 @@ export default function ProjectsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Square Footage</label>
+                  <label className="block text-xs text-gray-400 uppercase mb-1">Square Footage</label>
                   <input
                     type="number"
-                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white"
+                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
                     placeholder="e.g. 45000"
                     value={form.sqft}
                     onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))}
@@ -282,19 +304,19 @@ export default function ProjectsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Start Date</label>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Start Date</label>
                     <input
                       type="date"
-                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white"
+                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
                       value={form.startDate}
                       onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">End Date</label>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">End Date</label>
                     <input
                       type="date"
-                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white"
+                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
                       value={form.endDate}
                       onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                     />
@@ -302,10 +324,10 @@ export default function ProjectsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Description</label>
+                  <label className="block text-xs text-gray-400 uppercase mb-1">Description</label>
                   <textarea
                     rows={3}
-                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white resize-none"
+                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm resize-none focus:outline-none focus:border-neon-cyan"
                     placeholder="Brief description..."
                     value={form.description}
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}

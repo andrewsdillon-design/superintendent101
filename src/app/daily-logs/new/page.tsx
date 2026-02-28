@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 type Weather = 'Clear' | 'Partly Cloudy' | 'Rain' | 'Storm' | 'Fog' | 'Snow' | 'Windy'
 
@@ -21,6 +21,12 @@ interface CrewRow {
   count: string
 }
 
+interface Project {
+  id: string
+  title: string
+  status: string
+}
+
 type TranscribeState = 'idle' | 'recording' | 'transcribing' | 'done'
 
 function formatTime(secs: number) {
@@ -33,8 +39,17 @@ function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
 
-export default function NewDailyLogPage() {
+function NewDailyLogForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const projectIdParam = searchParams.get('projectId') ?? ''
+
+  // Projects
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectId, setProjectId] = useState(projectIdParam)
+  const [showNewProject, setShowNewProject] = useState(false)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [savingProject, setSavingProject] = useState(false)
 
   // Form fields
   const [date, setDate] = useState(todayStr())
@@ -58,15 +73,42 @@ export default function NewDailyLogPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
-  // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    fetch('/api/projects')
+      .then(r => r.json())
+      .then(d => setProjects(d.projects ?? []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [])
+
+  // ── Quick-create project ──────────────────────────────────────────────
+  async function handleCreateProject() {
+    if (!newProjectName.trim()) return
+    setSavingProject(true)
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newProjectName.trim(), status: 'ACTIVE' }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setProjects(prev => [data.project, ...prev])
+        setProjectId(data.project.id)
+        setNewProjectName('')
+        setShowNewProject(false)
+      }
+    } catch {}
+    setSavingProject(false)
+  }
 
   // ── Crew helpers ──────────────────────────────────────────────────────
   function addCrewRow() {
@@ -115,23 +157,17 @@ export default function NewDailyLogPage() {
   async function transcribeAudio(blob: Blob) {
     setTranscribeState('transcribing')
     setTranscribeError('')
-
     const fd = new FormData()
     fd.append('audio', blob, 'field-note.webm')
-
     try {
       const res = await fetch('/api/daily-logs/transcribe', { method: 'POST', body: fd })
       const data = await res.json()
-
       if (!res.ok) {
         setTranscribeError(data.error || 'Transcription failed')
         setTranscribeState('idle')
         return
       }
-
       setTranscript(data.transcript ?? '')
-
-      // Auto-fill form from structured output
       const s = data.structured ?? {}
       if (s.weather) setWeather(s.weather.split(',')[0].trim() as Weather || s.weather)
       if (s.workPerformed) setWorkPerformed(s.workPerformed)
@@ -144,7 +180,6 @@ export default function NewDailyLogPage() {
           .map(([trade, count]) => ({ trade, count: String(count) }))
         if (rows.length > 0) setCrew(rows)
       }
-
       setTranscribeState('done')
     } catch {
       setTranscribeError('Network error during transcription.')
@@ -169,7 +204,6 @@ export default function NewDailyLogPage() {
     setSubmitting(true)
     setSubmitError('')
 
-    // Upload photos first if any
     let photoUrls: string[] = []
     if (photoFiles.length > 0) {
       try {
@@ -180,9 +214,7 @@ export default function NewDailyLogPage() {
           const uploadData = await uploadRes.json()
           photoUrls = uploadData.urls ?? []
         }
-      } catch {
-        // Non-fatal: continue without photos
-      }
+      } catch {}
     }
 
     const crewCounts: Record<string, number> = {}
@@ -192,24 +224,23 @@ export default function NewDailyLogPage() {
       }
     })
 
-    const body = {
-      date,
-      weather,
-      crewCounts,
-      workPerformed,
-      deliveries,
-      inspections,
-      issues,
-      safetyNotes,
-      photoUrls,
-      transcript: transcript || null,
-    }
-
     try {
       const res = await fetch('/api/daily-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          date,
+          weather,
+          crewCounts,
+          workPerformed,
+          deliveries,
+          inspections,
+          issues,
+          safetyNotes,
+          photoUrls,
+          transcript: transcript || null,
+          projectId: projectId || null,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -217,12 +248,14 @@ export default function NewDailyLogPage() {
         setSubmitting(false)
         return
       }
-      router.push('/daily-logs')
+      router.push(projectId ? `/daily-logs?projectId=${projectId}` : '/daily-logs')
     } catch {
       setSubmitError('Network error. Please try again.')
       setSubmitting(false)
     }
   }
+
+  const selectedProject = projects.find(p => p.id === projectId)
 
   return (
     <div className="min-h-screen blueprint-bg">
@@ -231,6 +264,7 @@ export default function NewDailyLogPage() {
           <div className="flex items-center gap-6">
             <Link href="/daily-logs" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
             <nav className="hidden md:flex gap-4 text-sm">
+              <Link href="/projects" className="text-gray-400 hover:text-white">Projects</Link>
               <Link href="/daily-logs" className="text-gray-400 hover:text-white">Daily Logs</Link>
               <Link href="/daily-logs/new" className="text-white font-semibold">New Log</Link>
             </nav>
@@ -248,23 +282,16 @@ export default function NewDailyLogPage() {
         {/* Voice Transcription Banner */}
         <div className={`card mb-6 border-2 ${transcribeState === 'done' ? 'border-safety-green' : 'border-safety-orange/50'}`}>
           <h3 className="font-bold text-safety-orange text-sm uppercase mb-3">Voice Transcription</h3>
-
           {transcribeError && (
             <div className="mb-3 text-sm text-red-400 p-2 bg-red-900/20 border border-red-500/30">
               {transcribeError}
             </div>
           )}
-
           {transcribeState === 'idle' && (
-            <button
-              type="button"
-              onClick={startRecording}
-              className="btn-primary w-full"
-            >
+            <button type="button" onClick={startRecording} className="btn-primary w-full">
               ● Start Recording
             </button>
           )}
-
           {transcribeState === 'recording' && (
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center gap-3">
@@ -277,14 +304,12 @@ export default function NewDailyLogPage() {
               </button>
             </div>
           )}
-
           {transcribeState === 'transcribing' && (
             <div className="text-center py-4">
               <p className="font-mono text-neon-cyan animate-pulse">⟳ Transcribing &amp; structuring...</p>
               <p className="text-xs text-gray-500 mt-2">Whisper + AI filling your form fields</p>
             </div>
           )}
-
           {transcribeState === 'done' && (
             <div>
               <p className="text-safety-green text-sm font-semibold mb-2">✓ Form auto-filled from voice note</p>
@@ -313,12 +338,65 @@ export default function NewDailyLogPage() {
               </button>
             </div>
           )}
-
           <p className="text-xs text-gray-600 mt-3">Audio is transcribed in-memory and not stored.</p>
         </div>
 
-        {/* Log Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* Project Picker */}
+          <div>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-2">Project</label>
+            {!showNewProject ? (
+              <div className="flex gap-2">
+                <select
+                  value={projectId}
+                  onChange={e => setProjectId(e.target.value)}
+                  className="flex-1 bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+                >
+                  <option value="">No project</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowNewProject(true)}
+                  className="btn-secondary text-xs px-3 whitespace-nowrap"
+                >
+                  + New
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newProjectName}
+                  onChange={e => setNewProjectName(e.target.value)}
+                  placeholder="Project name..."
+                  className="flex-1 bg-blueprint-bg border border-neon-cyan/50 p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateProject}
+                  disabled={savingProject || !newProjectName.trim()}
+                  className="btn-primary text-xs px-3 disabled:opacity-50"
+                >
+                  {savingProject ? '...' : 'Create'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowNewProject(false); setNewProjectName('') }}
+                  className="text-gray-500 hover:text-white text-xs px-2"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {selectedProject && (
+              <p className="text-xs text-safety-yellow mt-1">Filing under: {selectedProject.title}</p>
+            )}
+          </div>
 
           {/* Date */}
           <div>
@@ -386,11 +464,7 @@ export default function NewDailyLogPage() {
                 </div>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={addCrewRow}
-              className="text-xs text-neon-cyan hover:text-neon-cyan/80 mt-2"
-            >
+            <button type="button" onClick={addCrewRow} className="text-xs text-neon-cyan hover:text-neon-cyan/80 mt-2">
               + Add trade
             </button>
           </div>
@@ -470,12 +544,8 @@ export default function NewDailyLogPage() {
               <div className="flex flex-wrap gap-2 mb-3">
                 {photoFiles.map((f, i) => (
                   <div key={i} className="relative">
-                    <div className="w-16 h-16 bg-blueprint-paper border border-blueprint-grid flex items-center justify-center overflow-hidden">
-                      <img
-                        src={URL.createObjectURL(f)}
-                        alt={f.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-16 h-16 bg-blueprint-paper border border-blueprint-grid overflow-hidden">
+                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-full object-cover" />
                     </div>
                     <button
                       type="button"
@@ -488,20 +558,14 @@ export default function NewDailyLogPage() {
                 ))}
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              className="btn-secondary text-sm"
-            >
+            <button type="button" onClick={() => photoInputRef.current?.click()} className="btn-secondary text-sm">
               + Add Photos
             </button>
             <p className="text-xs text-gray-600 mt-1">Max 10 photos</p>
           </div>
 
           {submitError && (
-            <div className="p-3 bg-red-900/40 border border-red-500 text-red-300 text-sm">
-              {submitError}
-            </div>
+            <div className="p-3 bg-red-900/40 border border-red-500 text-red-300 text-sm">{submitError}</div>
           )}
 
           <div className="flex gap-3 pb-4">
@@ -519,5 +583,13 @@ export default function NewDailyLogPage() {
         </form>
       </main>
     </div>
+  )
+}
+
+export default function NewDailyLogPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen blueprint-bg" />}>
+      <NewDailyLogForm />
+    </Suspense>
   )
 }
