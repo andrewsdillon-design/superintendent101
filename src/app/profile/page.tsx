@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useState } from 'react'
 import MobileNav from '@/components/mobile-nav'
 
 function initials(name: string) {
@@ -11,14 +11,14 @@ function initials(name: string) {
 }
 
 const tierLabel: Record<string, string> = {
-  FREE: 'COMMUNITY — FREE',
-  PRO: 'MENTOR — $39/mo',
-  DUST_LOGS: 'DAILY LOGS — $19/mo',
+  FREE: 'Free Trial',
+  PRO: 'Daily Logs Pro',
+  DUST_LOGS: 'Daily Logs Pro',
 }
 
 const tierColor: Record<string, string> = {
   FREE: 'text-gray-300',
-  PRO: 'text-safety-yellow',
+  PRO: 'text-safety-orange',
   DUST_LOGS: 'text-safety-orange',
 }
 
@@ -27,7 +27,6 @@ function ProfileContent() {
   const user = session?.user as any
   const searchParams = useSearchParams()
   const upgraded = searchParams.get('upgraded')
-  const notionStatus = searchParams.get('notion')
 
   const name = user?.name || user?.username || 'User'
   const username = user?.username || ''
@@ -35,72 +34,7 @@ function ProfileContent() {
   const subscription = user?.subscription || 'FREE'
 
   const [managingBilling, setManagingBilling] = useState(false)
-  const [connectingNotion, setConnectingNotion] = useState(false)
-  const [notionConnected, setNotionConnected] = useState(false)
-  const [notionNeedsSetup, setNotionNeedsSetup] = useState(false)
-  const [notionDbInput, setNotionDbInput] = useState('')
-  const [notionDbSaving, setNotionDbSaving] = useState(false)
-  const [notionDbError, setNotionDbError] = useState('')
-
-  useEffect(() => {
-    if (subscription === 'DUST_LOGS' || subscription === 'PRO') {
-      fetch('/api/integrations/notion')
-        .then(r => r.json())
-        .then(d => {
-          setNotionConnected(d.connected ?? false)
-          setNotionNeedsSetup(d.needsSetup ?? false)
-        })
-        .catch(() => {})
-    }
-  }, [subscription])
-
-  const handleNotionConnect = async () => {
-    setConnectingNotion(true)
-    try {
-      const res = await fetch('/api/integrations/notion', { method: 'POST' })
-      const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert(data.error ?? 'Could not connect to Notion.')
-      }
-    } catch {
-      alert('Network error.')
-    } finally {
-      setConnectingNotion(false)
-    }
-  }
-
-  const handleNotionDisconnect = async () => {
-    if (!confirm('Disconnect Notion? Your existing logs will stay in Notion but new ones won\'t sync.')) return
-    await fetch('/api/integrations/notion', { method: 'DELETE' })
-    setNotionConnected(false)
-    setNotionNeedsSetup(false)
-  }
-
-  const handleSaveNotionDb = async () => {
-    setNotionDbSaving(true)
-    setNotionDbError('')
-    try {
-      const res = await fetch('/api/integrations/notion', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ databaseId: notionDbInput }),
-      })
-      const data = await res.json()
-      if (data.connected) {
-        setNotionConnected(true)
-        setNotionNeedsSetup(false)
-        setNotionDbInput('')
-      } else {
-        setNotionDbError(data.error ?? 'Could not save database ID.')
-      }
-    } catch {
-      setNotionDbError('Network error.')
-    } finally {
-      setNotionDbSaving(false)
-    }
-  }
+  const [exportingData, setExportingData] = useState(false)
 
   const handleManageBilling = async () => {
     setManagingBilling(true)
@@ -116,17 +50,40 @@ function ProfileContent() {
     }
   }
 
+  const handleExportData = async () => {
+    setExportingData(true)
+    try {
+      const res = await fetch('/api/account/export')
+      if (!res.ok) {
+        const d = await res.json()
+        alert(d.error ?? 'Export failed.')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'profieldhub-export.zip'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Network error.')
+    } finally {
+      setExportingData(false)
+    }
+  }
+
+  const isSubscribed = subscription === 'DUST_LOGS' || subscription === 'PRO'
+
   return (
     <div className="min-h-screen blueprint-bg">
       <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
+            <Link href="/daily-logs" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
             <nav className="hidden md:flex gap-4 text-sm">
-              <Link href="/dashboard" className="text-gray-400 hover:text-white">Feed</Link>
-              <Link href="/mentors" className="text-gray-400 hover:text-white">Mentors</Link>
-              <Link href="/projects" className="text-gray-400 hover:text-white">Projects</Link>
-              <Link href="/dust-logs" className="text-gray-400 hover:text-white">Daily Logs</Link>
+              <Link href="/daily-logs" className="text-gray-400 hover:text-white">Daily Logs</Link>
+              <Link href="/daily-logs/new" className="text-gray-400 hover:text-white">New Log</Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">
@@ -144,27 +101,7 @@ function ProfileContent() {
       <main className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
         {upgraded && (
           <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
-            Your subscription has been upgraded. Welcome to {subscription}!
-          </div>
-        )}
-        {notionStatus === 'connected' && (
-          <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
-            Notion connected. Your Daily Logs will sync to your Notion database.
-          </div>
-        )}
-        {notionStatus === 'setup-needed' && (
-          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500 text-yellow-400 text-sm rounded">
-            Notion authorized — now link your database below to finish setup.
-          </div>
-        )}
-        {notionStatus === 'error' && (
-          <div className="mb-6 p-4 bg-safety-orange/10 border border-safety-orange text-safety-orange text-sm rounded">
-            Notion connection failed. Please try again.
-          </div>
-        )}
-        {notionStatus === 'misconfigured' && (
-          <div className="mb-6 p-4 bg-safety-orange/10 border border-safety-orange text-safety-orange text-sm rounded">
-            Notion integration is not yet configured on this server.
+            Subscription active. Welcome to Daily Logs Pro!
           </div>
         )}
 
@@ -177,22 +114,27 @@ function ProfileContent() {
             </div>
             <h2 className="font-semibold text-lg mt-4">{name}</h2>
             {username && <p className="text-sm text-gray-500">@{username}</p>}
-            {role === 'MENTOR' && <span className="badge-safe mt-2 inline-block">MENTOR</span>}
             {role === 'ADMIN' && <span className="text-xs text-safety-orange font-bold mt-2 block">ADMIN</span>}
-            <button className="btn-secondary w-full mt-4 text-sm">Edit Profile</button>
           </div>
 
           <div className="card md:col-span-2 space-y-4">
             <h3 className="font-bold text-safety-blue">SUBSCRIPTION</h3>
-            <div className="flex items-center justify-between">
-              <span className={`font-bold text-sm ${tierColor[subscription]}`}>
-                {tierLabel[subscription] ?? subscription}
-              </span>
-              {subscription === 'FREE' ? (
-                <Link href="/upgrade" className="btn-primary text-sm">Upgrade</Link>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <span className={`font-bold text-sm ${tierColor[subscription]}`}>
+                  {tierLabel[subscription] ?? subscription}
+                </span>
+                {isSubscribed && (
+                  <span className="ml-2 text-xs text-gray-500">— $9.99/mo</span>
+                )}
+                {!isSubscribed && (
+                  <span className="ml-2 text-xs text-gray-500">— 7-day trial</span>
+                )}
+              </div>
+              {!isSubscribed ? (
+                <Link href="/upgrade" className="btn-primary text-sm">Upgrade — $9.99/mo</Link>
               ) : (
-                <div className="flex gap-2">
-                  <Link href="/upgrade" className="btn-secondary text-sm">Change Plan</Link>
+                <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={handleManageBilling}
                     disabled={managingBilling}
@@ -205,113 +147,45 @@ function ProfileContent() {
             </div>
 
             <div className="border-t border-blueprint-grid pt-4">
-              <h4 className="text-sm font-bold text-gray-400 mb-3">TIER BENEFITS</h4>
-              <div className="space-y-2 text-xs text-gray-400">
-                <div className="flex items-center gap-2">
-                  <span className="text-safety-green">✓</span>
-                  <span>Community feed &amp; profile — FREE</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={subscription === 'DUST_LOGS' || subscription === 'PRO' ? 'text-safety-green' : 'text-gray-600'}>
-                    {subscription === 'DUST_LOGS' || subscription === 'PRO' ? '✓' : '○'}
-                  </span>
-                  <span>Daily Logs — voice AI + Notion sync — $19/mo</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={subscription === 'PRO' ? 'text-safety-green' : 'text-gray-600'}>
-                    {subscription === 'PRO' ? '✓' : '○'}
-                  </span>
-                  <span>Mentor listing — accept bookings + USDC payments — $39/mo</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="card mt-6">
-          <h3 className="font-bold text-safety-orange mb-4">RECENT PROJECTS</h3>
-          <div className="space-y-3">
-            <p className="text-sm text-gray-400">No projects yet.</p>
-          </div>
-          <Link href="/projects" className="text-sm text-neon-cyan hover:underline mt-4 block">
-            View projects →
-          </Link>
-        </div>
-
-        <div className="card mt-6">
-          <h3 className="font-bold text-safety-green mb-4">INTEGRATIONS</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-semibold text-sm">Notion</p>
-                <p className="text-xs text-gray-500">Sync Daily Logs to your Notion workspace</p>
-              </div>
-              {subscription === 'DUST_LOGS' || subscription === 'PRO' ? (
-                notionConnected ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-safety-green">Connected</span>
-                    <button onClick={handleNotionDisconnect} className="btn-secondary text-xs px-3 py-1">
-                      Disconnect
-                    </button>
+              <h4 className="text-sm font-bold text-gray-400 mb-3">DAILY LOGS PRO INCLUDES</h4>
+              <div className="grid sm:grid-cols-2 gap-2 text-xs text-gray-400">
+                {[
+                  'Voice transcription (Whisper)',
+                  'AI log structuring',
+                  'Crew counts by trade',
+                  'Weather logging',
+                  'PDF export',
+                  'Photo attachments',
+                  'Full log history',
+                  'Data export (ZIP)',
+                ].map(f => (
+                  <div key={f} className="flex items-center gap-2">
+                    <span className={isSubscribed ? 'text-safety-green' : 'text-gray-600'}>
+                      {isSubscribed ? '✓' : '○'}
+                    </span>
+                    <span>{f}</span>
                   </div>
-                ) : (
-                  <button
-                    onClick={handleNotionConnect}
-                    disabled={connectingNotion}
-                    className="btn-secondary text-xs px-3 py-1 disabled:opacity-50"
-                  >
-                    {connectingNotion ? 'Connecting...' : 'Connect'}
-                  </button>
-                )
-              ) : (
-                <button disabled className="btn-secondary text-xs px-3 py-1 opacity-40 cursor-not-allowed">
-                  Daily Logs required
-                </button>
-              )}
-            </div>
-
-            {/* Setup required: token exists but no database linked */}
-            {notionNeedsSetup && !notionConnected && (
-              <div className="mt-4 p-4 border border-yellow-500/40 rounded bg-yellow-500/5">
-                <p className="text-sm font-semibold text-yellow-400 mb-2">Notion Connected — Database Setup Required</p>
-                <p className="text-xs text-gray-400 mb-3">
-                  ProFieldHub is authorized with Notion, but needs a database to write to. Follow these steps:
-                </p>
-                <ol className="text-xs text-gray-400 space-y-1 mb-4 list-decimal list-inside">
-                  <li>In Notion, create a new <strong className="text-white">database page</strong> (e.g. "Daily Logs")</li>
-                  <li>Open it, click <strong className="text-white">...</strong> → <strong className="text-white">Connections</strong> → find and add <strong className="text-white">ProFieldHub</strong></li>
-                  <li>Copy the database ID from the URL — it's the long string after the last <code className="text-neon-cyan">/</code> and before <code className="text-neon-cyan">?</code></li>
-                  <li>Paste it below and click Save</li>
-                </ol>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Paste Notion database ID..."
-                    value={notionDbInput}
-                    onChange={e => setNotionDbInput(e.target.value)}
-                    className="flex-1 bg-blueprint-bg border border-blueprint-grid text-white text-xs px-3 py-2 rounded focus:outline-none focus:border-neon-cyan"
-                  />
-                  <button
-                    onClick={handleSaveNotionDb}
-                    disabled={notionDbSaving || !notionDbInput.trim()}
-                    className="btn-primary text-xs px-4 disabled:opacity-50"
-                  >
-                    {notionDbSaving ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-                {notionDbError && <p className="text-xs text-safety-orange mt-2">{notionDbError}</p>}
-                <button
-                  onClick={handleNotionDisconnect}
-                  className="text-xs text-gray-500 hover:text-gray-300 mt-3 block"
-                >
-                  Disconnect and start over
-                </button>
+                ))}
               </div>
-            )}
+            </div>
           </div>
-          {subscription !== 'DUST_LOGS' && subscription !== 'PRO' && (
-            <p className="text-xs text-gray-500 mt-4">Integrations require Daily Logs tier ($19/mo)</p>
-          )}
+        </div>
+
+        <div className="card mt-6">
+          <h3 className="font-bold text-safety-orange mb-4">YOUR DATA</h3>
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-semibold text-sm">Download My Data</p>
+              <p className="text-xs text-gray-500">Export all your logs, profile, and data as a ZIP file</p>
+            </div>
+            <button
+              onClick={handleExportData}
+              disabled={exportingData}
+              className="btn-secondary text-sm disabled:opacity-50"
+            >
+              {exportingData ? 'Preparing...' : 'Download ZIP'}
+            </button>
+          </div>
         </div>
       </main>
       <MobileNav />

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 
 const PLAN_LABELS: Record<string, { name: string; price: string; color: string }> = {
   PRO: { name: 'Register as Mentor', price: '$39/mo', color: 'text-safety-yellow' },
-  DUST_LOGS: { name: 'Daily Logs', price: '$19/mo (7-day free trial)', color: 'text-safety-orange' },
+  DUST_LOGS: { name: 'Daily Logs Pro', price: '$9.99/mo (7-day free trial)', color: 'text-safety-orange' },
 }
 
 function RegisterForm() {

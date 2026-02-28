@@ -5,64 +5,19 @@ import { useSession } from 'next-auth/react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const tiers = [
-  {
-    name: 'COMMUNITY',
-    tier: null,
-    price: 'Free',
-    color: 'text-neon-cyan',
-    border: 'border-neon-cyan',
-    features: [
-      'Community feed & posts',
-      'Public profile',
-      'Browse mentor directory',
-      'Book & pay for mentor sessions',
-      'Project portfolio',
-      'Basic networking',
-    ],
-    cta: 'Current Plan',
-    ctaStyle: 'btn-secondary',
-  },
-  {
-    name: 'DAILY LOGS',
-    tier: 'DUST_LOGS' as const,
-    price: '$19',
-    period: '/month',
-    color: 'text-safety-orange',
-    border: 'border-safety-orange',
-    highlight: true,
-    features: [
-      'Everything in Community',
-      '7-day free trial',
-      'Voice-to-text field logging',
-      'AI-powered log structuring',
-      'Notion workspace sync',
-      'Custom AI field prompts',
-      'No files stored (privacy-first)',
-      'SOC 2 compliant pipeline',
-    ],
-    cta: 'Upgrade to Daily Logs',
-    ctaStyle: 'btn-primary',
-  },
-  {
-    name: 'REGISTER AS MENTOR',
-    tier: 'PRO' as const,
-    price: '$39',
-    period: '/month',
-    color: 'text-safety-yellow',
-    border: 'border-safety-yellow',
-    features: [
-      'Everything in Daily Logs',
-      'List yourself as a mentor',
-      'Accept booking requests',
-      'Set your hourly rate',
-      'USDC peer-to-peer payments',
-      'Booking management dashboard',
-      'Direct messaging',
-    ],
-    cta: 'Register as Mentor',
-    ctaStyle: 'btn-primary',
-  },
+const features = [
+  'Voice-to-text field logging (Whisper AI)',
+  'AI-structured daily log output',
+  'Crew counts by trade',
+  'Weather condition logging',
+  'Work performed, deliveries, inspections',
+  'Issues & delays tracking',
+  'Safety notes section',
+  'Photo attachments',
+  'PDF export per log',
+  'Full log history',
+  'Data export (ZIP download)',
+  '7-day free trial',
 ]
 
 export default function UpgradePage() {
@@ -70,12 +25,14 @@ export default function UpgradePage() {
   const user = session?.user as any
   const currentSub = user?.subscription ?? 'FREE'
   const router = useRouter()
-  const [loadingTier, setLoadingTier] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const handleUpgrade = async (tier: 'PRO' | 'DUST_LOGS') => {
-    setLoadingTier(tier)
+  const isSubscribed = currentSub === 'DUST_LOGS' || currentSub === 'PRO'
+
+  const handleUpgrade = async () => {
+    setLoading(true)
     try {
-      const res = await fetch(`/api/stripe/checkout?tier=${tier}`, { method: 'POST' })
+      const res = await fetch('/api/stripe/checkout?tier=DUST_LOGS', { method: 'POST' })
       const data = await res.json()
       if (data.url) {
         router.push(data.url)
@@ -85,12 +42,12 @@ export default function UpgradePage() {
     } catch {
       alert('Network error. Please try again.')
     } finally {
-      setLoadingTier(null)
+      setLoading(false)
     }
   }
 
   const handleManageBilling = async () => {
-    setLoadingTier('portal')
+    setLoading(true)
     try {
       const res = await fetch('/api/stripe/portal', { method: 'POST' })
       const data = await res.json()
@@ -102,135 +59,72 @@ export default function UpgradePage() {
     } catch {
       alert('Network error.')
     } finally {
-      setLoadingTier(null)
+      setLoading(false)
     }
   }
-
-  const isSubscribed = currentSub !== 'FREE'
 
   return (
     <div className="min-h-screen blueprint-bg">
       <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/dashboard" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
-          <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">← Back to Dashboard</Link>
+          <Link href="/daily-logs" className="font-display text-xl font-bold text-neon-cyan">ProFieldHub</Link>
+          <Link href="/daily-logs" className="text-sm text-gray-400 hover:text-white">← Back to Logs</Link>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="font-display text-3xl font-bold text-safety-yellow">UPGRADE YOUR PLAN</h1>
-          <p className="text-gray-400 mt-2">Built for field staff. Priced for the real world.</p>
+      <main className="max-w-xl mx-auto px-4 py-12">
+        <div className="text-center mb-10">
+          <h1 className="font-display text-3xl font-bold text-safety-yellow">DAILY LOGS PRO</h1>
+          <p className="text-gray-400 mt-2">Everything you need to log the field like a pro.</p>
           {isSubscribed && (
             <div className="mt-4">
-              <p className="text-sm text-gray-300">
-                Current plan: <span className="text-safety-yellow font-semibold">{currentSub}</span>
+              <p className="text-sm text-safety-green font-semibold">
+                ✓ You&apos;re subscribed — Daily Logs Pro is active
               </p>
               <button
                 onClick={handleManageBilling}
-                disabled={loadingTier === 'portal'}
-                className="btn-secondary text-sm mt-2 disabled:opacity-50"
+                disabled={loading}
+                className="btn-secondary text-sm mt-3 disabled:opacity-50"
               >
-                {loadingTier === 'portal' ? 'Opening...' : 'Manage / Cancel Billing'}
+                {loading ? 'Opening...' : 'Manage / Cancel Billing'}
               </button>
             </div>
           )}
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {tiers.map(tier => {
-            const isCurrent = tier.tier === null
-              ? currentSub === 'FREE'
-              : currentSub === tier.tier
-            const isLoading = tier.tier && loadingTier === tier.tier
-
-            return (
-              <div
-                key={tier.name}
-                className={`card border-2 ${tier.border} ${tier.highlight ? 'ring-2 ring-safety-orange/20' : ''} flex flex-col`}
-              >
-                <div>
-                  <h2 className={`font-display text-xl font-bold ${tier.color} mb-1`}>{tier.name}</h2>
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-3xl font-bold text-white">{tier.price}</span>
-                    {tier.period && <span className="text-gray-400 text-sm">{tier.period}</span>}
-                  </div>
-                  <ul className="space-y-2 mb-8">
-                    {tier.features.map(f => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                        <span className="text-safety-green mt-0.5">✓</span>
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="mt-auto">
-                  {isCurrent ? (
-                    <button disabled className="btn-secondary w-full text-sm opacity-50 cursor-not-allowed">
-                      Current Plan
-                    </button>
-                  ) : tier.tier ? (
-                    <button
-                      onClick={() => handleUpgrade(tier.tier!)}
-                      disabled={!!loadingTier}
-                      className={`${tier.ctaStyle} w-full text-sm disabled:opacity-50`}
-                    >
-                      {isLoading ? 'Redirecting...' : tier.cta}
-                    </button>
-                  ) : (
-                    <button disabled className="btn-secondary w-full text-sm opacity-50 cursor-not-allowed">
-                      {tier.cta}
-                    </button>
-                  )}
-                  {tier.tier && !isCurrent && (
-                    <p className="text-xs text-center text-gray-500 mt-2">Cancel anytime</p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <div className="mt-12 card">
-          <h3 className="font-bold text-safety-blue mb-4">USDC MENTORSHIP PAYMENTS</h3>
-          <p className="text-sm text-gray-300 mb-3">
-            Trade mentorship hours peer-to-peer using USDC stablecoin. No credit card chargebacks, instant settlement, and low fees.
-          </p>
-          <div className="grid md:grid-cols-3 gap-4 text-sm">
-            <div className="bg-blueprint-paper/30 p-3 border border-blueprint-grid">
-              <p className="font-bold text-neon-cyan mb-1">How It Works</p>
-              <p className="text-gray-400 text-xs">Book a mentor session → USDC held in smart contract → Released after session confirmed</p>
-            </div>
-            <div className="bg-blueprint-paper/30 p-3 border border-blueprint-grid">
-              <p className="font-bold text-neon-cyan mb-1">For Mentors</p>
-              <p className="text-gray-400 text-xs">Set your hourly rate → Accept bookings → Receive USDC instantly after session</p>
-            </div>
-            <div className="bg-blueprint-paper/30 p-3 border border-blueprint-grid">
-              <p className="font-bold text-neon-cyan mb-1">Fees</p>
-              <p className="text-gray-400 text-xs">5% platform fee on mentorship transactions. No fees for community features.</p>
-            </div>
+        <div className="card border-2 border-safety-orange ring-2 ring-safety-orange/20">
+          <div className="text-xs text-safety-orange font-bold mb-3 uppercase tracking-wider">Daily Logs Pro</div>
+          <div className="flex items-baseline gap-1 mb-2">
+            <span className="text-5xl font-bold text-white">$9.99</span>
+            <span className="text-gray-400 text-sm">/month</span>
           </div>
-          <p className="text-xs text-gray-500 mt-3">* USDC payments require Mentor tier ($39/mo). Coming soon.</p>
-        </div>
+          <p className="text-safety-green text-sm mb-8 font-semibold">7-day free trial included</p>
 
-        <div className="mt-6 card">
-          <h3 className="font-bold text-safety-green mb-4">DAILY LOGS — PRIVACY ARCHITECTURE</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
-            <div>
-              <p className="font-bold text-white mb-2">Zero-storage pipeline</p>
-              <p className="text-xs text-gray-400">
-                Audio is transcribed in-memory and immediately discarded. Your field notes go directly to your own
-                Notion workspace or Google NotebookLM — we never store audio or transcripts on our servers.
-              </p>
-            </div>
-            <div>
-              <p className="font-bold text-white mb-2">SOC 2 compliant</p>
-              <p className="text-xs text-gray-400">
-                All API calls are encrypted in transit (TLS 1.3). Auth tokens are scoped per-user. We use
-                industry-standard secret management. Audit logs available for Pro accounts.
-              </p>
-            </div>
-          </div>
+          <ul className="space-y-3 mb-8">
+            {features.map(f => (
+              <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                <span className="text-safety-green mt-0.5 flex-shrink-0">✓</span>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+
+          {isSubscribed ? (
+            <button disabled className="btn-secondary w-full text-sm opacity-50 cursor-not-allowed">
+              Current Plan
+            </button>
+          ) : (
+            <button
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="btn-primary w-full text-base py-3 disabled:opacity-50"
+            >
+              {loading ? 'Redirecting...' : 'Start Free Trial'}
+            </button>
+          )}
+          {!isSubscribed && (
+            <p className="text-xs text-center text-gray-500 mt-3">Cancel anytime · No credit card to start</p>
+          )}
         </div>
       </main>
     </div>

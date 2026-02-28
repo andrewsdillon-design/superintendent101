@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
   const priceId = tier === 'PRO'
     ? process.env.STRIPE_PRICE_PRO
-    : process.env.STRIPE_PRICE_DUST_LOGS
+    : process.env.STRIPE_PRICE_DAILY_LOGS
 
   if (!priceId) {
     return NextResponse.json({ error: 'Stripe price not configured' }, { status: 500 })
