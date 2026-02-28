@@ -90,6 +90,9 @@ function ProfileContent() {
             {role === 'ADMIN' && (
               <Link href="/admin" className="text-sm text-safety-orange font-semibold hover:underline">Admin Panel</Link>
             )}
+            {user?.companyRole === 'OWNER' && (
+              <Link href="/company" className="text-sm text-neon-cyan font-semibold hover:underline">My Company</Link>
+            )}
             <span className="text-sm text-white font-semibold">Profile</span>
             <button onClick={() => signOut({ callbackUrl: '/' })} className="text-sm text-gray-400 hover:text-white">
               Sign Out

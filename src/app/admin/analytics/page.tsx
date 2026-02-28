@@ -114,6 +114,7 @@ export default function AnalyticsPage() {
             <nav className="flex gap-4 text-sm ml-4">
               <Link href="/admin" className="text-gray-400 hover:text-white">Users</Link>
               <span className="text-white font-semibold">Analytics</span>
+              <Link href="/admin/companies" className="text-gray-400 hover:text-white">Companies</Link>
             </nav>
           </div>
           <Link href="/admin" className="text-sm text-gray-400 hover:text-white">← Users</Link>

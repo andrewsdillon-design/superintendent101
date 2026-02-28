@@ -47,6 +47,7 @@ model User {
   jobSites         JobSite[]
   apiUsageLogs     ApiUsageLog[]
   dailyLogs        DailyLog[]
+  companyMemberships CompanyMember[]
 }
 
 enum Role {
@@ -255,4 +256,38 @@ model DailyLog {
   transcript    String?  @db.Text        // raw voice transcript for reference
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// ─── Company Groups (white-label client management) ────────────────────────────
+
+model Company {
+  id           String          @id @default(cuid())
+  name         String
+  slug         String          @unique   // used in URLs / API references
+  logoUrl      String?
+  brandColor   String          @default("#2563eb")
+  contactEmail String?
+  seats        Int             @default(10)   // max members allowed
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  members      CompanyMember[]
+}
+
+model CompanyMember {
+  id          String      @id @default(cuid())
+  companyId   String
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        CompanyRole @default(MEMBER)
+  joinedAt    DateTime    @default(now())
+
+  @@unique([companyId, userId])
+}
+
+enum CompanyRole {
+  OWNER
+  MEMBER
 }

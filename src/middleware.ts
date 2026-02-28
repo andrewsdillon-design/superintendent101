@@ -49,5 +49,6 @@ export const config = {
     '/wallet/:path*',
     '/admin/:path*',
     '/upgrade/:path*',
+    '/company/:path*',
   ],
 }

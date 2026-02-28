@@ -60,6 +60,7 @@ export default function AdminPage() {
             <nav className="flex gap-4 text-sm ml-4">
               <span className="text-white font-semibold">Users</span>
               <Link href="/admin/analytics" className="text-gray-400 hover:text-white">Analytics</Link>
+              <Link href="/admin/companies" className="text-gray-400 hover:text-white">Companies</Link>
             </nav>
           </div>
           <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">← Dashboard</Link>
