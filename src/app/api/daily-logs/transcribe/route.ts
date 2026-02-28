@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI, { toFile } from 'openai'
 import { getUserId } from '@/lib/get-user-id'
 
-// Groq Whisper for transcription (fast + cheap)
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY ?? '',
-  baseURL: 'https://api.groq.com/openai/v1',
+// OpenAI Whisper for transcription
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
+
+// xAI Grok 4.1 Fast for structuring (OpenAI-compatible API)
+const grok = new OpenAI({
+  apiKey: process.env.XAI_API_KEY ?? '',
+  baseURL: 'https://api.x.ai/v1',
 })
 
-// GPT-4o mini for structuring (already integrated, negligible cost)
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
+const GROK_MODEL = 'grok-4-1-fast-non-reasoning'
 
 const SYSTEM_PROMPT = `You are a construction field log assistant. Extract structured daily log data from this superintendent's voice notes.
 
@@ -48,8 +50,11 @@ export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!process.env.GROQ_API_KEY) {
-    return NextResponse.json({ error: 'GROQ_API_KEY not configured' }, { status: 503 })
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 503 })
+  }
+  if (!process.env.XAI_API_KEY) {
+    return NextResponse.json({ error: 'XAI_API_KEY not configured' }, { status: 503 })
   }
 
   let formData: FormData
@@ -71,13 +76,15 @@ export async function POST(req: NextRequest) {
   const ext = ALLOWED_TYPES[audioFile.type] ?? 'm4a'
 
   try {
-    // Step 1: Transcribe with Groq Whisper
+    // Step 1: Transcribe with OpenAI Whisper
     const audioBuffer = await audioFile.arrayBuffer()
-    const file = await toFile(Buffer.from(audioBuffer), `field-note.${ext}`, { type: audioFile.type || 'audio/m4a' })
+    const file = await toFile(Buffer.from(audioBuffer), `field-note.${ext}`, {
+      type: audioFile.type || 'audio/m4a',
+    })
 
-    const transcription = await groq.audio.transcriptions.create({
+    const transcription = await openai.audio.transcriptions.create({
       file,
-      model: 'whisper-large-v3-turbo',
+      model: 'whisper-1',
       language: 'en',
     })
 
@@ -86,9 +93,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Could not transcribe audio' }, { status: 422 })
     }
 
-    // Step 2: Structure with GPT-4o mini
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    // Step 2: Structure with Grok 4.1 Fast
+    const completion = await grok.chat.completions.create({
+      model: GROK_MODEL,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: transcript },
