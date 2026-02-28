@@ -24,8 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const filename = `daily-log-${log.date.toISOString().split('T')[0]}.pdf`
 
-  return new NextResponse(new Blob([uint8], { type: 'application/pdf' }), {
+  return new NextResponse(uint8.buffer as ArrayBuffer, {
     headers: {
+      'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'no-store',
     },

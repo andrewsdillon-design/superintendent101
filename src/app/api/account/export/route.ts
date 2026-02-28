@@ -121,10 +121,17 @@ export async function GET(req: NextRequest) {
     compressionOptions: { level: 6 },
   })
 
+  // Slice to a plain ArrayBuffer — valid BodyInit across all TS lib versions
+  const arrayBuf = zipBuffer.buffer.slice(
+    zipBuffer.byteOffset,
+    zipBuffer.byteOffset + zipBuffer.byteLength
+  )
+
   const filename = `profieldhub-export-${exportDate.split('T')[0]}.zip`
 
-  return new NextResponse(new Blob([zipBuffer], { type: 'application/zip' }), {
+  return new NextResponse(arrayBuf as ArrayBuffer, {
     headers: {
+      'Content-Type': 'application/zip',
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'no-store',
     },
