@@ -14,3 +14,27 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ projects })
 }
+
+export async function POST(req: NextRequest) {
+  const userId = await getUserId(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json()
+  const { title, location } = body
+
+  if (!title?.trim()) {
+    return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+  }
+
+  const project = await prisma.project.create({
+    data: {
+      userId,
+      title: title.trim(),
+      location: location?.trim() || null,
+      status: 'ACTIVE',
+    },
+    select: { id: true, title: true, location: true, status: true },
+  })
+
+  return NextResponse.json({ project }, { status: 201 })
+}

@@ -31,6 +31,9 @@ export default function AdminUserPage() {
   const [subscription, setSubscription] = useState('')
   const [betaTester, setBetaTester] = useState(false)
   const [message, setMessage] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState('')
 
   useEffect(() => {
     fetch(`/api/admin/users/${id}`)
@@ -74,6 +77,28 @@ export default function AdminUserPage() {
     } else {
       setMessage('Error deleting user.')
     }
+  }
+
+  const savePassword = async () => {
+    if (newPassword.length < 8) {
+      setPasswordMessage('Password must be at least 8 characters.')
+      return
+    }
+    setSavingPassword(true)
+    setPasswordMessage('')
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: newPassword }),
+    })
+    if (res.ok) {
+      setNewPassword('')
+      setPasswordMessage('Password updated.')
+    } else {
+      const data = await res.json()
+      setPasswordMessage(data.error ?? 'Error updating password.')
+    }
+    setSavingPassword(false)
   }
 
   if (loading) {
@@ -194,6 +219,37 @@ export default function AdminUserPage() {
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
+        </div>
+
+        <div className="card mb-6">
+          <h2 className="font-bold text-safety-orange mb-4">SET PASSWORD</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Manually set a new password for this user. They can change it themselves after logging in.
+          </p>
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-sm text-gray-400 mb-2">New Password (min 8 chars)</label>
+              <input
+                type="text"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white font-mono"
+              />
+            </div>
+            <button
+              onClick={savePassword}
+              disabled={savingPassword || newPassword.length < 8}
+              className="btn-primary text-sm disabled:opacity-50 whitespace-nowrap"
+            >
+              {savingPassword ? 'Saving...' : 'Set Password'}
+            </button>
+          </div>
+          {passwordMessage && (
+            <p className={`mt-3 text-sm ${passwordMessage.includes('Error') || passwordMessage.includes('must') ? 'text-safety-orange' : 'text-safety-green'}`}>
+              {passwordMessage}
+            </p>
+          )}
         </div>
 
         <div className="card border border-safety-orange/30">

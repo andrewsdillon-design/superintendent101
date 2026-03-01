@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin'
 import { prisma } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireAdmin()
@@ -23,7 +24,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if ('error' in auth) return auth.error
 
   const body = await request.json()
-  const { role, subscription, betaTester } = body
+  const { role, subscription, betaTester, password } = body
 
   const data: Record<string, unknown> = {}
   if (role && ['MEMBER', 'MENTOR', 'ADMIN'].includes(role)) data.role = role
@@ -32,6 +33,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     data.betaTester = Boolean(betaTester)
     // Granting beta = automatically upgrade to DUST_LOGS
     if (betaTester === true) data.subscription = 'DUST_LOGS'
+  }
+  if (password && typeof password === 'string' && password.length >= 8) {
+    data.password = await bcrypt.hash(password, 12)
   }
 
   if (Object.keys(data).length === 0) {

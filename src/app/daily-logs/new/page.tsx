@@ -27,7 +27,7 @@ interface Project {
   status: string
 }
 
-type TranscribeState = 'idle' | 'recording' | 'transcribing' | 'done'
+type TranscribeState = 'idle' | 'recording' | 'transcribing' | 'done' | 'paste'
 
 function formatTime(secs: number) {
   const m = Math.floor(secs / 60).toString().padStart(2, '0')
@@ -69,6 +69,7 @@ function NewDailyLogForm() {
   const [transcript, setTranscript] = useState('')
   const [showTranscript, setShowTranscript] = useState(false)
   const [audioFileName, setAudioFileName] = useState('')
+  const [pasteText, setPasteText] = useState('')
 
   // Submission
   const [submitting, setSubmitting] = useState(false)
@@ -198,6 +199,42 @@ function NewDailyLogForm() {
     } catch {
       setTranscribeError('Network error during transcription.')
       setTranscribeState('idle')
+    }
+  }
+
+  // ── Paste transcript ──────────────────────────────────────────────────
+  async function handlePasteSubmit() {
+    if (!pasteText.trim()) return
+    setTranscribeState('transcribing')
+    setTranscribeError('')
+    const fd = new FormData()
+    fd.append('transcript', pasteText.trim())
+    try {
+      const res = await fetch('/api/daily-logs/transcribe', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) {
+        setTranscribeError(data.error || 'Failed to structure transcript')
+        setTranscribeState('paste')
+        return
+      }
+      setTranscript(pasteText.trim())
+      const s = data.structured ?? {}
+      if (s.weather) setWeather(s.weather.split(',')[0].trim() as Weather || s.weather)
+      if (s.workPerformed) setWorkPerformed(s.workPerformed)
+      if (s.deliveries) setDeliveries(s.deliveries)
+      if (s.inspections) setInspections(s.inspections)
+      if (s.issues) setIssues(s.issues)
+      if (s.safetyNotes) setSafetyNotes(s.safetyNotes)
+      if (s.crewCounts && typeof s.crewCounts === 'object') {
+        const rows: CrewRow[] = Object.entries(s.crewCounts as Record<string, number>)
+          .map(([trade, count]) => ({ trade, count: String(count) }))
+        if (rows.length > 0) setCrew(rows)
+      }
+      setPasteText('')
+      setTranscribeState('done')
+    } catch {
+      setTranscribeError('Network error. Please try again.')
+      setTranscribeState('paste')
     }
   }
 
@@ -333,7 +370,45 @@ function NewDailyLogForm() {
                   ↑ Upload Audio File
                 </button>
               </div>
+              {/* Paste transcript */}
+              <button
+                type="button"
+                onClick={() => setTranscribeState('paste')}
+                className="btn-secondary w-full text-sm"
+              >
+                📋 Paste Transcript
+              </button>
               <p className="text-xs text-gray-600 text-center">MP3, M4A, WAV, OGG, FLAC — max 25MB</p>
+            </div>
+          )}
+
+          {transcribeState === 'paste' && (
+            <div className="space-y-3">
+              <textarea
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                rows={6}
+                placeholder="Paste or type your field notes here — GPT-4o-mini will structure them into your form..."
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan resize-none text-sm"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handlePasteSubmit}
+                  disabled={!pasteText.trim()}
+                  className="btn-primary flex-1 text-sm disabled:opacity-50"
+                >
+                  Structure → Fill Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTranscribeState('idle'); setPasteText(''); setTranscribeError('') }}
+                  className="btn-secondary text-sm px-4"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
@@ -379,10 +454,10 @@ function NewDailyLogForm() {
               )}
               <button
                 type="button"
-                onClick={() => { setTranscribeState('idle'); setTranscript(''); setTranscribeError(''); setAudioFileName('') }}
+                onClick={() => { setTranscribeState('idle'); setTranscript(''); setTranscribeError(''); setAudioFileName(''); setPasteText('') }}
                 className="text-xs text-gray-500 hover:text-white mt-2 block"
               >
-                Re-record / Upload different file
+                Re-record / Upload / Paste different input
               </button>
             </div>
           )}

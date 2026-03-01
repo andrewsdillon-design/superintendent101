@@ -67,44 +67,52 @@ export async function POST(req: NextRequest) {
   }
 
   const audioFile = formData.get('audio') as File | null
-  if (!audioFile) {
-    return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
+  const pastedTranscript = formData.get('transcript') as string | null
+
+  if (!audioFile && !pastedTranscript?.trim()) {
+    return NextResponse.json({ error: 'No audio file or transcript provided' }, { status: 400 })
   }
 
-  if (audioFile.size > 25 * 1024 * 1024) {
+  if (audioFile && audioFile.size > 25 * 1024 * 1024) {
     return NextResponse.json({ error: 'Audio file too large (max 25MB)' }, { status: 400 })
   }
 
-  const ext = ALLOWED_TYPES[audioFile.type] ?? 'm4a'
-
   try {
-    // Step 1: Transcribe with gpt-4o-mini-transcribe
-    const audioBuffer = await audioFile.arrayBuffer()
-    const file = await toFile(Buffer.from(audioBuffer), `field-note.${ext}`, {
-      type: audioFile.type || 'audio/m4a',
-    })
+    let transcript: string
 
-    const transcription = await openai.audio.transcriptions.create({
-      file,
-      model: 'gpt-4o-mini-transcribe',
-      language: 'en',
-    })
+    if (pastedTranscript?.trim()) {
+      // Text path — skip transcription, go straight to structuring
+      transcript = pastedTranscript.trim()
+    } else {
+      // Audio path — Step 1: Transcribe with gpt-4o-mini-transcribe
+      const ext = ALLOWED_TYPES[audioFile!.type] ?? 'm4a'
+      const audioBuffer = await audioFile!.arrayBuffer()
+      const file = await toFile(Buffer.from(audioBuffer), `field-note.${ext}`, {
+        type: audioFile!.type || 'audio/m4a',
+      })
 
-    const transcript = transcription.text?.trim()
-    if (!transcript) {
-      return NextResponse.json({ error: 'Could not transcribe audio — try speaking more clearly or uploading a cleaner recording.' }, { status: 422 })
+      const transcription = await openai.audio.transcriptions.create({
+        file,
+        model: 'gpt-4o-mini-transcribe',
+        language: 'en',
+      })
+
+      transcript = transcription.text?.trim() ?? ''
+      if (!transcript) {
+        return NextResponse.json({ error: 'Could not transcribe audio — try speaking more clearly or uploading a cleaner recording.' }, { status: 422 })
+      }
+
+      // Log transcription usage (non-blocking)
+      prisma.apiUsageLog.create({
+        data: {
+          userId,
+          service: 'whisper',
+          action: 'transcribe',
+          fileSizeBytes: audioFile!.size,
+          costUsd: estimateTranscribeCost(audioFile!.size),
+        },
+      }).catch(() => {})
     }
-
-    // Log transcription usage (non-blocking)
-    prisma.apiUsageLog.create({
-      data: {
-        userId,
-        service: 'whisper',        // keep existing identifier for analytics grouping
-        action: 'transcribe',
-        fileSizeBytes: audioFile.size,
-        costUsd: estimateTranscribeCost(audioFile.size),
-      },
-    }).catch(() => {})
 
     // Step 2: Structure with gpt-4o-mini
     const completion = await openai.chat.completions.create({
