@@ -8,7 +8,7 @@ interface Member {
   id: string
   role: string
   joinedAt: string
-  user: { id: string; name: string | null; email: string; username: string; subscription: string }
+  user: { id: string; name: string | null; email: string; username: string; subscription: string; betaTester: boolean }
 }
 
 interface Company {
@@ -20,6 +20,7 @@ interface Company {
   contactEmail: string | null
   seats: number
   active: boolean
+  grantsBetaTester: boolean
   members: Member[]
 }
 
@@ -28,11 +29,21 @@ export default function AdminCompanyDetailPage() {
   const router = useRouter()
   const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Add member form
   const [addEmail, setAddEmail] = useState('')
+  const [addName, setAddName] = useState('')
   const [addRole, setAddRole] = useState<'MEMBER' | 'OWNER'>('MEMBER')
   const [addError, setAddError] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  // Edit form
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', logoUrl: '', brandColor: '', contactEmail: '', seats: '' })
+
+  // Beta apply state
+  const [applying, setApplying] = useState(false)
+  const [applyMsg, setApplyMsg] = useState('')
 
   async function load() {
     setLoading(true)
@@ -56,18 +67,21 @@ export default function AdminCompanyDetailPage() {
   async function addMember(e: React.FormEvent) {
     e.preventDefault()
     setAddError('')
+    setAdding(true)
     const res = await fetch(`/api/admin/companies/${params.id}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: addEmail, role: addRole }),
+      body: JSON.stringify({ email: addEmail, name: addName || undefined, role: addRole }),
     })
     if (res.ok) {
       setAddEmail('')
+      setAddName('')
       load()
     } else {
       const d = await res.json()
       setAddError(d.error ?? 'Failed to add member')
     }
+    setAdding(false)
   }
 
   async function removeMember(userId: string) {
@@ -93,6 +107,31 @@ export default function AdminCompanyDetailPage() {
     })
     setEditMode(false)
     load()
+  }
+
+  async function toggleGrantsBetaTester() {
+    if (!company) return
+    const next = !company.grantsBetaTester
+    await fetch(`/api/admin/companies/${params.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grantsBetaTester: next }),
+    })
+    load()
+  }
+
+  async function applyBetaToAll() {
+    setApplying(true)
+    setApplyMsg('')
+    const res = await fetch(`/api/admin/companies/${params.id}/apply-beta`, { method: 'POST' })
+    if (res.ok) {
+      const d = await res.json()
+      setApplyMsg(`✓ Granted free-for-life to ${d.updated} member${d.updated !== 1 ? 's' : ''}`)
+      load()
+    } else {
+      setApplyMsg('Failed to apply')
+    }
+    setApplying(false)
   }
 
   async function deleteCompany() {
@@ -126,6 +165,7 @@ export default function AdminCompanyDetailPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
         {/* Company Header */}
         <div className="card flex justify-between items-start">
           <div className="flex gap-4 items-center">
@@ -133,17 +173,19 @@ export default function AdminCompanyDetailPage() {
               <img src={company.logoUrl} alt={company.name} className="w-12 h-12 object-contain rounded" />
             )}
             <div>
-              <h1 className="font-display text-2xl font-bold text-white">{company.name}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="font-display text-2xl font-bold text-white">{company.name}</h1>
+                {company.grantsBetaTester && (
+                  <span className="text-xs font-bold text-safety-green border border-safety-green/40 px-2 py-0.5 rounded">
+                    FREE FOR LIFE
+                  </span>
+                )}
+              </div>
               <p className="text-gray-500 text-sm font-mono">{company.slug}</p>
               {company.contactEmail && <p className="text-gray-400 text-sm">{company.contactEmail}</p>}
               <div className="flex gap-4 mt-1 text-sm">
                 <span className="text-gray-400">{company.members.length} / {company.seats} seats</span>
-                <span
-                  className="font-semibold"
-                  style={{ color: company.brandColor }}
-                >
-                  ● Brand color
-                </span>
+                <span className="font-semibold" style={{ color: company.brandColor }}>● Brand color</span>
                 <span className={`font-semibold ${company.active ? 'text-safety-green' : 'text-gray-500'}`}>
                   {company.active ? 'ACTIVE' : 'INACTIVE'}
                 </span>
@@ -199,28 +241,73 @@ export default function AdminCompanyDetailPage() {
           </form>
         )}
 
-        {/* Add Member */}
-        <div className="card space-y-4">
-          <h2 className="font-display font-bold text-white">Add Member</h2>
-          {addError && <p className="text-red-400 text-sm">{addError}</p>}
-          <form onSubmit={addMember} className="flex gap-3">
-            <input
-              type="email"
-              className="bg-blueprint-bg border border-blueprint-grid p-2 text-white flex-1"
-              placeholder="user@email.com"
-              value={addEmail}
-              onChange={e => setAddEmail(e.target.value)}
-              required
-            />
-            <select
-              className="bg-blueprint-bg border border-blueprint-grid p-2 text-white"
-              value={addRole}
-              onChange={e => setAddRole(e.target.value as 'MEMBER' | 'OWNER')}
+        {/* Free for Life toggle */}
+        <div className="card">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-semibold text-white">Free for Life — Beta Group</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                New members added here are automatically granted Daily Logs Pro permanently.
+                Stripe cancellations will never downgrade them.
+              </p>
+            </div>
+            <button
+              onClick={toggleGrantsBetaTester}
+              className={`relative w-12 h-6 rounded-full transition-colors ${company.grantsBetaTester ? 'bg-safety-green' : 'bg-gray-600'}`}
             >
-              <option value="MEMBER">Member</option>
-              <option value="OWNER">Owner</option>
-            </select>
-            <button type="submit" className="btn-primary text-sm px-4">Add</button>
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${company.grantsBetaTester ? 'translate-x-7' : 'translate-x-1'}`} />
+            </button>
+          </div>
+          {company.members.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-blueprint-grid flex items-center gap-4">
+              <button
+                onClick={applyBetaToAll}
+                disabled={applying}
+                className="btn-secondary text-sm disabled:opacity-50"
+              >
+                {applying ? 'Applying...' : `Apply free-for-life to all ${company.members.length} current members`}
+              </button>
+              {applyMsg && <span className="text-safety-green text-sm">{applyMsg}</span>}
+            </div>
+          )}
+        </div>
+
+        {/* Add Member */}
+        <div className="card space-y-3">
+          <h2 className="font-display font-bold text-white">Add Member</h2>
+          <p className="text-xs text-gray-400">
+            Enter an email. If no account exists, one will be created and a welcome email sent automatically.
+          </p>
+          {addError && <p className="text-red-400 text-sm">{addError}</p>}
+          <form onSubmit={addMember} className="space-y-3">
+            <div className="flex gap-3">
+              <input
+                type="email"
+                className="bg-blueprint-bg border border-blueprint-grid p-2 text-white flex-1"
+                placeholder="user@email.com *"
+                value={addEmail}
+                onChange={e => setAddEmail(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                className="bg-blueprint-bg border border-blueprint-grid p-2 text-white w-40"
+                placeholder="Full name (opt.)"
+                value={addName}
+                onChange={e => setAddName(e.target.value)}
+              />
+              <select
+                className="bg-blueprint-bg border border-blueprint-grid p-2 text-white"
+                value={addRole}
+                onChange={e => setAddRole(e.target.value as 'MEMBER' | 'OWNER')}
+              >
+                <option value="MEMBER">Member</option>
+                <option value="OWNER">Owner</option>
+              </select>
+              <button type="submit" disabled={adding} className="btn-primary text-sm px-4 disabled:opacity-50">
+                {adding ? 'Adding...' : 'Add'}
+              </button>
+            </div>
           </form>
         </div>
 
@@ -245,8 +332,15 @@ export default function AdminCompanyDetailPage() {
               ) : company.members.map(m => (
                 <tr key={m.id} className="border-b border-blueprint-grid/50 hover:bg-blueprint-paper/20">
                   <td className="py-3 pr-4">
-                    <p className="text-white font-medium">{m.user.name ?? m.user.username}</p>
-                    <p className="text-gray-500 text-xs">{m.user.email}</p>
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="text-white font-medium">{m.user.name ?? m.user.username}</p>
+                        <p className="text-gray-500 text-xs">{m.user.email}</p>
+                      </div>
+                      {m.user.betaTester && (
+                        <span className="text-xs text-safety-green font-bold">★</span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 pr-4 text-gray-300 text-xs">{m.user.subscription}</td>
                   <td className="py-3 pr-4">

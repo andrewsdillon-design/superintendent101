@@ -13,7 +13,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     where: { id: params.id },
     include: {
       members: {
-        include: { user: { select: { id: true, name: true, email: true, username: true, subscription: true } } },
+        include: { user: { select: { id: true, name: true, email: true, username: true, subscription: true, betaTester: true } } },
         orderBy: { joinedAt: 'asc' },
       },
     },
@@ -30,7 +30,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const body = await request.json()
-  const { name, logoUrl, brandColor, contactEmail, seats, active } = body
+  const { name, logoUrl, brandColor, contactEmail, seats, active, grantsBetaTester } = body
 
   const company = await prisma.company.update({
     where: { id: params.id },
@@ -41,6 +41,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       ...(contactEmail !== undefined && { contactEmail: contactEmail || null }),
       ...(seats !== undefined && { seats: Number(seats) }),
       ...(active !== undefined && { active }),
+      ...(grantsBetaTester !== undefined && { grantsBetaTester }),
     },
   })
 

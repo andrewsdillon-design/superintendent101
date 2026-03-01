@@ -262,16 +262,17 @@ model DailyLog {
 // ─── Company Groups (white-label client management) ────────────────────────────
 
 model Company {
-  id           String          @id @default(cuid())
-  name         String
-  slug         String          @unique   // used in URLs / API references
-  logoUrl      String?
-  brandColor   String          @default("#2563eb")
-  contactEmail String?
-  seats        Int             @default(10)   // max members allowed
-  active       Boolean         @default(true)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  id               String          @id @default(cuid())
+  name             String
+  slug             String          @unique   // used in URLs / API references
+  logoUrl          String?
+  brandColor       String          @default("#2563eb")
+  contactEmail     String?
+  seats            Int             @default(10)   // max members allowed
+  active           Boolean         @default(true)
+  grantsBetaTester Boolean         @default(false) // all members get free-for-life
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   members      CompanyMember[]
 }
