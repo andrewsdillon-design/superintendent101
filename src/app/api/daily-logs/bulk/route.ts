@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Verify all provided projectIds belong to this user
-  const projectIds = [...new Set(logs.map((l) => l.projectId).filter(Boolean) as string[])]
+  const projectIds = Array.from(new Set(logs.map((l) => l.projectId).filter(Boolean) as string[]))
   if (projectIds.length > 0) {
     const projects = await prisma.project.findMany({
       where: { id: { in: projectIds }, userId },
