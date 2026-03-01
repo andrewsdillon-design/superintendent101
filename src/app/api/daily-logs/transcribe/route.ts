@@ -5,24 +5,30 @@ import { prisma } from '@/lib/db'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
 
-const SYSTEM_PROMPT = `You are a construction field log assistant. Extract structured daily log data from this superintendent's voice notes.
+function buildSystemPrompt(builderType: string, projectTitles: string[]): string {
+  const projectsStr = projectTitles.length > 0 ? projectTitles.join(', ') : 'none listed'
 
-Return ONLY a valid JSON object with these exact keys:
-{
-  "weather": "string — conditions and temperature if mentioned, e.g. 'Clear, 87°F'",
-  "crewCounts": { "Trade Name": count_as_number },
-  "workPerformed": "string — what was built or done today",
-  "deliveries": "string — materials or equipment delivered",
-  "inspections": "string — any inspections, include pass/fail if mentioned",
-  "issues": "string — delays, problems, concerns",
-  "safetyNotes": "string — safety observations or incidents"
-}
+  return `You are a construction field assistant. Given a voice transcript from a superintendent's daily field report, extract structured log data.
+
+Builder type: ${builderType || 'COMMERCIAL'}
+Active projects: ${projectsStr}
+
+If the transcript clearly covers MULTIPLE lots/projects, return:
+{ "multi": true, "logs": [{ "projectHint": "Lot 5", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }, ...] }
+
+If the transcript covers ONE lot/project, return:
+{ "multi": false, "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }
 
 Rules:
 - If something was not mentioned, use an empty string "" or {} for crewCounts.
 - For crewCounts, use clean trade names as keys: "Framers", "Electricians", "Plumbers", etc.
+- address: job site street address if mentioned, otherwise "".
+- permitNumber: building permit number if mentioned, otherwise "".
+- rfi: any RFIs (Requests for Information) mentioned, otherwise "".
 - Be concise but complete. Do not invent details not mentioned.
+- Only use multi=true when the transcript clearly discusses multiple separate lots/addresses/projects.
 - Return raw JSON only, no markdown fences.`
+}
 
 const ALLOWED_TYPES: Record<string, string> = {
   'audio/mpeg': 'mp3',
@@ -68,6 +74,14 @@ export async function POST(req: NextRequest) {
 
   const audioFile = formData.get('audio') as File | null
   const pastedTranscript = formData.get('transcript') as string | null
+  const builderType = (formData.get('builderType') as string | null) ?? ''
+  const projectsRaw = (formData.get('projects') as string | null) ?? '[]'
+
+  let projectTitles: string[] = []
+  try {
+    const parsed = JSON.parse(projectsRaw) as Array<{ id: string; title: string }>
+    projectTitles = parsed.map((p) => p.title)
+  } catch {}
 
   if (!audioFile && !pastedTranscript?.trim()) {
     return NextResponse.json({ error: 'No audio file or transcript provided' }, { status: 400 })
@@ -115,10 +129,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 2: Structure with gpt-4o-mini
+    const systemPrompt = buildSystemPrompt(builderType, projectTitles)
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: transcript },
       ],
       response_format: { type: 'json_object' },
@@ -132,7 +147,7 @@ export async function POST(req: NextRequest) {
     prisma.apiUsageLog.create({
       data: {
         userId,
-        service: 'gpt4o',          // keep existing identifier for analytics grouping
+        service: 'gpt4o',
         action: 'structure',
         inputTokens,
         outputTokens,

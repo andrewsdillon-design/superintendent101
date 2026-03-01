@@ -59,7 +59,10 @@ function NewDailyLogForm() {
   const [deliveries, setDeliveries] = useState('')
   const [inspections, setInspections] = useState('')
   const [issues, setIssues] = useState('')
+  const [rfi, setRfi] = useState('')
   const [safetyNotes, setSafetyNotes] = useState('')
+  const [address, setAddress] = useState('')
+  const [permitNumber, setPermitNumber] = useState('')
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
 
   // Voice transcription
@@ -190,6 +193,9 @@ function NewDailyLogForm() {
       if (s.inspections) setInspections(s.inspections)
       if (s.issues) setIssues(s.issues)
       if (s.safetyNotes) setSafetyNotes(s.safetyNotes)
+      if (s.address) setAddress(s.address)
+      if (s.permitNumber) setPermitNumber(s.permitNumber)
+      if (s.rfi) setRfi(s.rfi)
       if (s.crewCounts && typeof s.crewCounts === 'object') {
         const rows: CrewRow[] = Object.entries(s.crewCounts as Record<string, number>)
           .map(([trade, count]) => ({ trade, count: String(count) }))
@@ -225,6 +231,9 @@ function NewDailyLogForm() {
       if (s.inspections) setInspections(s.inspections)
       if (s.issues) setIssues(s.issues)
       if (s.safetyNotes) setSafetyNotes(s.safetyNotes)
+      if (s.address) setAddress(s.address)
+      if (s.permitNumber) setPermitNumber(s.permitNumber)
+      if (s.rfi) setRfi(s.rfi)
       if (s.crewCounts && typeof s.crewCounts === 'object') {
         const rows: CrewRow[] = Object.entries(s.crewCounts as Record<string, number>)
           .map(([trade, count]) => ({ trade, count: String(count) }))
@@ -295,7 +304,10 @@ function NewDailyLogForm() {
           deliveries,
           inspections,
           issues,
+          rfi,
           safetyNotes,
+          address: address || null,
+          permitNumber: permitNumber || null,
           photoUrls,
           transcript: transcript || null,
           projectId: projectId || null,
@@ -521,6 +533,30 @@ function NewDailyLogForm() {
             )}
           </div>
 
+          {/* Address + Permit */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Job Site Address</label>
+              <input
+                type="text"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="123 Main St..."
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Permit #</label>
+              <input
+                type="text"
+                value={permitNumber}
+                onChange={e => setPermitNumber(e.target.value)}
+                placeholder="Optional..."
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+              />
+            </div>
+          </div>
+
           {/* Date */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Date</label>
@@ -635,7 +671,19 @@ function NewDailyLogForm() {
               value={issues}
               onChange={e => setIssues(e.target.value)}
               rows={3}
-              placeholder="Problems, RFIs, delays, concerns..."
+              placeholder="Problems, delays, concerns..."
+              className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-safety-orange resize-none text-sm"
+            />
+          </div>
+
+          {/* RFIs */}
+          <div>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">RFIs</label>
+            <textarea
+              value={rfi}
+              onChange={e => setRfi(e.target.value)}
+              rows={2}
+              placeholder="Requests for Information submitted or received..."
               className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-safety-orange resize-none text-sm"
             />
           </div>

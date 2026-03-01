@@ -11,12 +11,16 @@ export async function GET(req: NextRequest) {
   const projectId = searchParams.get('projectId')
   const limit = parseInt(searchParams.get('limit') ?? '50')
   const offset = parseInt(searchParams.get('offset') ?? '0')
+  const showArchived = searchParams.get('archived') === 'true'
+
+  const where = {
+    userId,
+    archived: showArchived ? true : false,
+    ...(projectId ? { projectId } : {}),
+  }
 
   const logs = await prisma.dailyLog.findMany({
-    where: {
-      userId,
-      ...(projectId ? { projectId } : {}),
-    },
+    where,
     orderBy: { date: 'desc' },
     take: limit,
     skip: offset,
@@ -25,7 +29,7 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  const total = await prisma.dailyLog.count({ where: { userId } })
+  const total = await prisma.dailyLog.count({ where })
 
   return NextResponse.json({ logs, total })
 }
@@ -49,6 +53,9 @@ export async function POST(req: NextRequest) {
     photoUrls,
     signatureUrl,
     transcript,
+    address,
+    permitNumber,
+    rfi,
   } = body
 
   if (!date) {
@@ -76,6 +83,9 @@ export async function POST(req: NextRequest) {
       photoUrls: photoUrls ?? [],
       signatureUrl: signatureUrl ?? null,
       transcript: transcript ?? null,
+      address: address ?? null,
+      permitNumber: permitNumber ?? null,
+      rfi: rfi ?? '',
     },
     include: {
       project: { select: { id: true, title: true } },

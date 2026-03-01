@@ -34,6 +34,7 @@ model User {
   notionToken     String?
   notionDbId      String?
   betaTester      Boolean      @default(false)   // free for life — Stripe webhook skips these
+  builderType     String?      // 'RESIDENTIAL' | 'COMMERCIAL'
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -255,6 +256,10 @@ model DailyLog {
   photoUrls     String[] @default([])
   signatureUrl  String?
   transcript    String?  @db.Text        // raw voice transcript for reference
+  archived      Boolean  @default(false)
+  address       String?                  // job site address for this log
+  permitNumber  String?                  // permit number for this log
+  rfi           String   @default("") @db.Text  // RFIs logged this day
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

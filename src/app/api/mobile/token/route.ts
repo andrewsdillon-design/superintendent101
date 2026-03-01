@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
         passwordHash: true,
         subscription: true,
         role: true,
+        builderType: true,
       },
     })
 
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
         username: user.username,
         subscription: user.subscription,
         role: user.role,
+        builderType: user.builderType,
       },
     })
   } catch (err) {

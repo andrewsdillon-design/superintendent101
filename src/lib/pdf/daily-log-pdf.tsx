@@ -11,6 +11,9 @@ export interface DailyLogForPdf {
   inspections: string
   issues: string
   safetyNotes: string
+  rfi?: string | null
+  address?: string | null
+  permitNumber?: string | null
   photoUrls: string[]
   signatureUrl?: string | null
   project?: { title: string; location?: string | null } | null
@@ -161,14 +164,27 @@ export function buildDailyLogPdf(log: DailyLogForPdf, generatedAt?: string): Rea
             <Text style={S.metaValue}>{log.project?.title ?? '—'}</Text>
           </View>
           <View style={S.metaItem}>
-            <Text style={S.metaLabel}>LOCATION</Text>
-            <Text style={S.metaValue}>{log.project?.location ?? '—'}</Text>
-          </View>
-          <View style={S.metaItem}>
             <Text style={S.metaLabel}>WEATHER</Text>
             <Text style={S.metaValue}>{log.weather || '—'}</Text>
           </View>
         </View>
+
+        {(log.address || log.permitNumber) && (
+          <View style={[S.metaRow, { marginTop: -8 }]}>
+            {log.address ? (
+              <View style={S.metaItem}>
+                <Text style={S.metaLabel}>JOB SITE ADDRESS</Text>
+                <Text style={S.metaValue}>{log.address}</Text>
+              </View>
+            ) : null}
+            {log.permitNumber ? (
+              <View style={S.metaItem}>
+                <Text style={S.metaLabel}>PERMIT #</Text>
+                <Text style={S.metaValue}>{log.permitNumber}</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
 
         {crewEntries.length > 0 && (
           <View style={S.crewTable}>
@@ -193,6 +209,7 @@ export function buildDailyLogPdf(log: DailyLogForPdf, generatedAt?: string): Rea
         <Section title="DELIVERIES" value={log.deliveries} />
         <Section title="INSPECTIONS" value={log.inspections} />
         <Section title="ISSUES / DELAYS" value={log.issues} />
+        {log.rfi ? <Section title="RFIs" value={log.rfi} /> : null}
         <Section title="SAFETY NOTES" value={log.safetyNotes} />
 
         {log.photoUrls.length > 0 && (
