@@ -11,6 +11,7 @@ interface UserDetail {
   username: string
   role: string
   subscription: string
+  betaTester: boolean
   isMentor: boolean
   location: string | null
   bio: string | null
@@ -28,6 +29,7 @@ export default function AdminUserPage() {
   const [saving, setSaving] = useState(false)
   const [role, setRole] = useState('')
   const [subscription, setSubscription] = useState('')
+  const [betaTester, setBetaTester] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export default function AdminUserPage() {
           setUser(data.user)
           setRole(data.user.role)
           setSubscription(data.user.subscription)
+          setBetaTester(data.user.betaTester)
         }
         setLoading(false)
       })
@@ -49,11 +52,13 @@ export default function AdminUserPage() {
     const res = await fetch(`/api/admin/users/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, subscription }),
+      body: JSON.stringify({ role, subscription, betaTester }),
     })
     const data = await res.json()
     if (res.ok) {
       setUser(data.user)
+      setSubscription(data.user.subscription)
+      setBetaTester(data.user.betaTester)
       setMessage('Saved successfully.')
     } else {
       setMessage(data.error ?? 'Error saving.')
@@ -104,14 +109,23 @@ export default function AdminUserPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="card mb-6">
-          <h1 className="font-display text-xl font-bold text-white mb-1">{user.name || user.username}</h1>
-          <p className="text-gray-400 text-sm">{user.email} • @{user.username}</p>
-          <p className="text-gray-500 text-xs mt-1">
-            Joined {new Date(user.createdAt).toLocaleDateString()}
-            {user.location ? ` • ${user.location}` : ''}
-            {user.yearsExperience ? ` • ${user.yearsExperience}yr exp` : ''}
-          </p>
-          {user.bio && <p className="text-gray-300 text-sm mt-3">{user.bio}</p>}
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="font-display text-xl font-bold text-white mb-1">{user.name || user.username}</h1>
+              <p className="text-gray-400 text-sm">{user.email} • @{user.username}</p>
+              <p className="text-gray-500 text-xs mt-1">
+                Joined {new Date(user.createdAt).toLocaleDateString()}
+                {user.location ? ` • ${user.location}` : ''}
+                {user.yearsExperience ? ` • ${user.yearsExperience}yr exp` : ''}
+              </p>
+              {user.bio && <p className="text-gray-300 text-sm mt-3">{user.bio}</p>}
+            </div>
+            {user.betaTester && (
+              <span className="text-xs font-bold text-safety-green border border-safety-green/40 px-2 py-1 rounded">
+                BETA TESTER
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="card mb-6">
@@ -136,12 +150,36 @@ export default function AdminUserPage() {
               <select
                 value={subscription}
                 onChange={e => setSubscription(e.target.value)}
-                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white"
+                disabled={betaTester}
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white disabled:opacity-50"
               >
                 <option value="FREE">FREE</option>
-                <option value="PRO">PRO ($20/mo)</option>
-                <option value="DUST_LOGS">Daily Logs ($50/mo)</option>
+                <option value="PRO">PRO</option>
+                <option value="DUST_LOGS">Daily Logs Pro</option>
               </select>
+              {betaTester && (
+                <p className="text-xs text-safety-green mt-1">Locked to Daily Logs Pro — beta tester</p>
+              )}
+            </div>
+          </div>
+
+          {/* Beta Tester toggle */}
+          <div className="mt-6 p-4 border border-safety-green/20 bg-safety-green/5 rounded">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-semibold text-white">Beta Tester — Free for Life</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Grants Daily Logs Pro permanently. Stripe cancellation will not downgrade this account.
+                </p>
+              </div>
+              <button
+                onClick={() => setBetaTester(b => !b)}
+                className={`relative w-12 h-6 rounded-full transition-colors ${betaTester ? 'bg-safety-green' : 'bg-gray-600'}`}
+              >
+                <span
+                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${betaTester ? 'translate-x-7' : 'translate-x-1'}`}
+                />
+              </button>
             </div>
           </div>
 

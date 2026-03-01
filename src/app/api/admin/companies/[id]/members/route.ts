@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { sendCompanyWelcomeEmail } from '@/lib/email'
 
 // GET /api/admin/companies/[id]/members
 export async function GET(_: Request, { params }: { params: { id: string } }) {
@@ -27,9 +28,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const body = await request.json()
-  const { email, userId, role } = body
+  const { email, userId, role, sendWelcome = true } = body
 
-  const company = await prisma.company.findUnique({ where: { id: params.id }, include: { _count: { select: { members: true } } } })
+  const company = await prisma.company.findUnique({
+    where: { id: params.id },
+    include: { _count: { select: { members: true } } },
+  })
   if (!company) return NextResponse.json({ error: 'Company not found' }, { status: 404 })
   if (company._count.members >= company.seats) {
     return NextResponse.json({ error: `Seat limit reached (${company.seats})` }, { status: 400 })
@@ -56,6 +60,22 @@ export async function POST(request: Request, { params }: { params: { id: string 
     },
     include: { user: { select: { id: true, name: true, email: true, username: true, subscription: true } } },
   })
+
+  // Send branded welcome email with password setup link
+  if (sendWelcome) {
+    try {
+      await sendCompanyWelcomeEmail({
+        toEmail: user.email,
+        toName: user.name,
+        companyName: company.name,
+        companyLogoUrl: company.logoUrl,
+        companyBrandColor: company.brandColor,
+      })
+    } catch (err) {
+      console.error('Welcome email failed:', err)
+      // Non-fatal — member was still added
+    }
+  }
 
   return NextResponse.json({ member }, { status: 201 })
 }

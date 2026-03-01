@@ -11,7 +11,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     select: {
       id: true, name: true, email: true, username: true, role: true,
       subscription: true, isMentor: true, location: true, bio: true,
-      yearsExperience: true, createdAt: true,
+      yearsExperience: true, createdAt: true, betaTester: true,
     },
   })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -23,11 +23,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if ('error' in auth) return auth.error
 
   const body = await request.json()
-  const { role, subscription } = body
+  const { role, subscription, betaTester } = body
 
   const data: Record<string, unknown> = {}
   if (role && ['MEMBER', 'MENTOR', 'ADMIN'].includes(role)) data.role = role
   if (subscription && ['FREE', 'PRO', 'DUST_LOGS'].includes(subscription)) data.subscription = subscription
+  if (betaTester !== undefined) {
+    data.betaTester = Boolean(betaTester)
+    // Granting beta = automatically upgrade to DUST_LOGS
+    if (betaTester === true) data.subscription = 'DUST_LOGS'
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
@@ -36,7 +41,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   const user = await prisma.user.update({
     where: { id: params.id },
     data,
-    select: { id: true, name: true, email: true, role: true, subscription: true },
+    select: { id: true, name: true, email: true, role: true, subscription: true, betaTester: true },
   })
 
   return NextResponse.json({ user })

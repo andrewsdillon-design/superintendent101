@@ -33,6 +33,7 @@ model User {
   // Integration tokens (encrypted at rest)
   notionToken     String?
   notionDbId      String?
+  betaTester      Boolean      @default(false)   // free for life — Stripe webhook skips these
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 

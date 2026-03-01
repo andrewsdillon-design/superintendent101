@@ -42,8 +42,9 @@ export async function POST(request: NextRequest) {
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription
       const customer = sub.customer as string
+      // Skip downgrade for beta testers (free for life)
       await prisma.user.updateMany({
-        where: { stripeCustomerId: customer },
+        where: { stripeCustomerId: customer, betaTester: false },
         data: { subscription: 'FREE', stripeSubId: null },
       })
       break
@@ -54,8 +55,9 @@ export async function POST(request: NextRequest) {
       if (sub.status === 'active') break
       if (sub.status === 'canceled' || sub.status === 'unpaid') {
         const customer = sub.customer as string
+        // Skip downgrade for beta testers (free for life)
         await prisma.user.updateMany({
-          where: { stripeCustomerId: customer },
+          where: { stripeCustomerId: customer, betaTester: false },
           data: { subscription: 'FREE', stripeSubId: null },
         })
       }
