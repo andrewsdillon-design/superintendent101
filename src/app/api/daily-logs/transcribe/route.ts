@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI, { toFile } from 'openai'
 import { getUserId } from '@/lib/get-user-id'
+import { prisma } from '@/lib/db'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
 
@@ -39,6 +40,17 @@ const ALLOWED_TYPES: Record<string, string> = {
   'video/quicktime': 'mp4',
 }
 
+// gpt-4o-mini-transcribe: $0.003/min  →  estimate from file size at ~128kbps
+function estimateTranscribeCost(bytes: number): number {
+  const minutes = bytes / (128 * 1024 / 8) / 60
+  return Math.max(0.001, minutes * 0.003)
+}
+
+// gpt-4o-mini: $0.15/1M input tokens, $0.60/1M output tokens
+function estimateStructureCost(inputTokens: number, outputTokens: number): number {
+  return (inputTokens / 1_000_000) * 0.15 + (outputTokens / 1_000_000) * 0.60
+}
+
 export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -66,7 +78,7 @@ export async function POST(req: NextRequest) {
   const ext = ALLOWED_TYPES[audioFile.type] ?? 'm4a'
 
   try {
-    // Step 1: Transcribe with OpenAI Whisper
+    // Step 1: Transcribe with gpt-4o-mini-transcribe
     const audioBuffer = await audioFile.arrayBuffer()
     const file = await toFile(Buffer.from(audioBuffer), `field-note.${ext}`, {
       type: audioFile.type || 'audio/m4a',
@@ -83,7 +95,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Could not transcribe audio — try speaking more clearly or uploading a cleaner recording.' }, { status: 422 })
     }
 
-    // Step 2: Structure with GPT-4o-mini
+    // Log transcription usage (non-blocking)
+    prisma.apiUsageLog.create({
+      data: {
+        userId,
+        service: 'whisper',        // keep existing identifier for analytics grouping
+        action: 'transcribe',
+        fileSizeBytes: audioFile.size,
+        costUsd: estimateTranscribeCost(audioFile.size),
+      },
+    }).catch(() => {})
+
+    // Step 2: Structure with gpt-4o-mini
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -93,6 +116,21 @@ export async function POST(req: NextRequest) {
       response_format: { type: 'json_object' },
       temperature: 0.1,
     })
+
+    const inputTokens = completion.usage?.prompt_tokens ?? 0
+    const outputTokens = completion.usage?.completion_tokens ?? 0
+
+    // Log structuring usage (non-blocking)
+    prisma.apiUsageLog.create({
+      data: {
+        userId,
+        service: 'gpt4o',          // keep existing identifier for analytics grouping
+        action: 'structure',
+        inputTokens,
+        outputTokens,
+        costUsd: estimateStructureCost(inputTokens, outputTokens),
+      },
+    }).catch(() => {})
 
     const raw = completion.choices[0]?.message?.content ?? '{}'
     let structured: Record<string, unknown>

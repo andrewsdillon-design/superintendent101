@@ -10,7 +10,7 @@ interface User {
   username: string
   role: string
   subscription: string
-  isMentor: boolean
+  betaTester: boolean
   createdAt: string
 }
 
@@ -21,6 +21,13 @@ export default function AdminPage() {
   const [pages, setPages] = useState(1)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+
+  // Create user form
+  const [creating, setCreating] = useState(false)
+  const [createForm, setCreateForm] = useState({ name: '', email: '', subscription: 'FREE' })
+  const [createError, setCreateError] = useState('')
+  const [createMsg, setCreateMsg] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -37,6 +44,27 @@ export default function AdminPage() {
   }, [page, search])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault()
+    setCreateError('')
+    setCreateMsg('')
+    setSaving(true)
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(createForm),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setCreateMsg(`✓ Account created for ${data.user.email} — welcome email sent`)
+      setCreateForm({ name: '', email: '', subscription: 'FREE' })
+      fetchUsers()
+    } else {
+      setCreateError(data.error ?? 'Failed to create user')
+    }
+    setSaving(false)
+  }
 
   const subColor: Record<string, string> = {
     FREE: 'text-gray-400',
@@ -73,8 +101,58 @@ export default function AdminPage() {
             <h1 className="font-display text-2xl font-bold text-safety-orange">USER MANAGEMENT</h1>
             <p className="text-gray-400 text-sm mt-1">{total} total users</p>
           </div>
+          <button onClick={() => { setCreating(c => !c); setCreateError(''); setCreateMsg('') }} className="btn-primary text-sm">
+            {creating ? 'Cancel' : '+ Create User'}
+          </button>
         </div>
 
+        {/* Create User Form */}
+        {creating && (
+          <form onSubmit={createUser} className="card mb-6 space-y-4">
+            <h2 className="font-display font-bold text-white">Create New User</h2>
+            <p className="text-xs text-gray-400">Account is created instantly. A welcome email with a password setup link is sent automatically.</p>
+            {createError && <p className="text-red-400 text-sm">{createError}</p>}
+            {createMsg && <p className="text-safety-green text-sm">{createMsg}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Full Name</label>
+                <input
+                  className="bg-blueprint-bg border border-blueprint-grid p-2 text-white w-full"
+                  placeholder="John Smith"
+                  value={createForm.name}
+                  onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Email *</label>
+                <input
+                  type="email"
+                  required
+                  className="bg-blueprint-bg border border-blueprint-grid p-2 text-white w-full"
+                  placeholder="user@email.com"
+                  value={createForm.email}
+                  onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Subscription</label>
+                <select
+                  className="bg-blueprint-bg border border-blueprint-grid p-2 text-white w-full"
+                  value={createForm.subscription}
+                  onChange={e => setCreateForm(f => ({ ...f, subscription: e.target.value }))}
+                >
+                  <option value="FREE">Free</option>
+                  <option value="DUST_LOGS">Daily Logs Pro</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" disabled={saving} className="btn-primary text-sm disabled:opacity-50">
+              {saving ? 'Creating...' : 'Create & Send Welcome Email'}
+            </button>
+          </form>
+        )}
+
+        {/* Search */}
         <div className="card mb-6 flex gap-4">
           <input
             type="text"
@@ -86,6 +164,7 @@ export default function AdminPage() {
           <button onClick={fetchUsers} className="btn-secondary text-sm px-4">Refresh</button>
         </div>
 
+        {/* User Table */}
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -107,8 +186,13 @@ export default function AdminPage() {
                 users.map(u => (
                   <tr key={u.id} className="border-b border-blueprint-grid/50 hover:bg-blueprint-paper/20">
                     <td className="py-3 pr-4">
-                      <p className="font-medium text-white">{u.name || '—'}</p>
-                      <p className="text-gray-500 text-xs">{u.email}</p>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <p className="font-medium text-white">{u.name || '—'}</p>
+                          <p className="text-gray-500 text-xs">{u.email}</p>
+                        </div>
+                        {u.betaTester && <span className="text-safety-green text-xs font-bold">★</span>}
+                      </div>
                     </td>
                     <td className="py-3 pr-4 text-gray-300">@{u.username}</td>
                     <td className={`py-3 pr-4 font-semibold ${roleColor[u.role] ?? ''}`}>{u.role}</td>
@@ -134,17 +218,13 @@ export default function AdminPage() {
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
               className="btn-secondary text-sm disabled:opacity-50"
-            >
-              ← Prev
-            </button>
+            >← Prev</button>
             <span className="text-gray-400 text-sm self-center">Page {page} of {pages}</span>
             <button
               onClick={() => setPage(p => Math.min(pages, p + 1))}
               disabled={page === pages}
               className="btn-secondary text-sm disabled:opacity-50"
-            >
-              Next →
-            </button>
+            >Next →</button>
           </div>
         )}
       </main>

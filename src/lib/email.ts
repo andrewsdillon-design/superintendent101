@@ -109,6 +109,53 @@ export async function sendCompanyWelcomeEmail({
   })
 }
 
+// ─── Admin-created user welcome email ────────────────────────────────────────
+
+export async function sendAdminWelcomeEmail({
+  toEmail,
+  toName,
+}: {
+  toEmail: string
+  toName: string | null
+}) {
+  await prisma.passwordResetToken.deleteMany({ where: { email: toEmail } })
+  const token = randomBytes(32).toString('hex')
+  await prisma.passwordResetToken.create({
+    data: { token, email: toEmail, expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 72) },
+  })
+
+  const setPasswordUrl = `${BASE_URL}/reset-password?token=${token}`
+  const greeting = toName ? `Hi ${toName.split(' ')[0]},` : 'Hi there,'
+
+  const body = `
+    <p style="color:#e2e8f0;font-size:16px;line-height:1.6;">${greeting}</p>
+    <p style="color:#e2e8f0;font-size:15px;line-height:1.6;">
+      Your <strong style="color:#00e5ff;">ProFieldHub</strong> account has been created.
+      ProFieldHub is a daily log builder built for construction field teams.
+    </p>
+    <p style="color:#94a3b8;font-size:14px;line-height:1.6;">
+      Click below to set your password and get started. This link expires in <strong>72 hours</strong>.
+    </p>
+    <div style="margin:28px 0;">
+      <a href="${setPasswordUrl}"
+         style="display:inline-block;background:#00e5ff;color:#000;padding:14px 28px;
+                text-decoration:none;font-weight:800;font-size:14px;letter-spacing:0.5px;">
+        SET YOUR PASSWORD →
+      </a>
+    </div>
+    <p style="color:#64748b;font-size:13px;line-height:1.6;">
+      Your login email is: <strong style="color:#e2e8f0;">${toEmail}</strong>
+    </p>
+  `
+
+  await getResend().emails.send({
+    from: 'ProFieldHub <noreply@profieldhub.com>',
+    to: toEmail,
+    subject: 'Welcome to ProFieldHub — Set your password',
+    html: emailWrapper({ body }),
+  })
+}
+
 // ─── Password reset email ─────────────────────────────────────────────────────
 
 export async function sendPasswordResetEmail({ toEmail, resetUrl }: { toEmail: string; resetUrl: string }) {

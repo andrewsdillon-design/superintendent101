@@ -180,12 +180,12 @@ export default function AnalyticsPage() {
               <h2 className="font-bold text-sm uppercase text-gray-400 mb-4">Cost by Service</h2>
               <div className="space-y-4">
 
-                {/* Whisper */}
+                {/* Transcription */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <div>
-                      <span className="text-sm font-semibold text-white">Whisper</span>
-                      <span className="text-xs text-gray-500 ml-2">Transcription · $0.006/min</span>
+                      <span className="text-sm font-semibold text-white">GPT-4o-mini Transcribe</span>
+                      <span className="text-xs text-gray-500 ml-2">Transcription · $0.003/min</span>
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-bold text-neon-cyan">{fmtShort(ov.whisperCost)}</span>
@@ -200,12 +200,12 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
 
-                {/* GPT-4o */}
+                {/* Structuring */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <div>
-                      <span className="text-sm font-semibold text-white">GPT-4o</span>
-                      <span className="text-xs text-gray-500 ml-2">Structuring · $2.50/1M in · $10/1M out</span>
+                      <span className="text-sm font-semibold text-white">GPT-4o-mini</span>
+                      <span className="text-xs text-gray-500 ml-2">Structuring · $0.15/1M in · $0.60/1M out</span>
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-bold text-safety-yellow">{fmtShort(ov.gpt4oCost)}</span>
@@ -260,8 +260,8 @@ export default function AnalyticsPage() {
                     <tr className="border-b border-blueprint-grid text-gray-400 text-left">
                       <th className="pb-3 pr-4">User</th>
                       <th className="pb-3 pr-4">Plan</th>
-                      <th className="pb-3 pr-4 text-right">Whisper</th>
-                      <th className="pb-3 pr-4 text-right">GPT-4o</th>
+                      <th className="pb-3 pr-4 text-right">Transcribe</th>
+                      <th className="pb-3 pr-4 text-right">GPT-4o-mini</th>
                       <th className="pb-3 pr-4 text-right">Total Calls</th>
                       <th className="pb-3 pr-4">Cost</th>
                       <th className="pb-3 text-right">Last Used</th>
@@ -324,7 +324,7 @@ export default function AnalyticsPage() {
                         <td className="py-2 pr-4 text-gray-300">@{r.user.username}</td>
                         <td className="py-2 pr-4">
                           <span className={r.service === 'whisper' ? 'text-neon-cyan' : 'text-safety-yellow'}>
-                            {r.service === 'whisper' ? 'Whisper' : 'GPT-4o'}
+                            {r.service === 'whisper' ? 'GPT-4o-mini Transcribe' : 'GPT-4o-mini'}
                           </span>
                         </td>
                         <td className="py-2 pr-4 text-gray-500">
