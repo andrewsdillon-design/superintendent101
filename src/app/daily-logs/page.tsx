@@ -47,6 +47,8 @@ function DailyLogsContent() {
   const [loading, setLoading] = useState(true)
   const [projectFilter, setProjectFilter] = useState(projectIdParam ?? '')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [generatingSummary, setGeneratingSummary] = useState(false)
+  const [weeklyReport, setWeeklyReport] = useState<{ summary: string; label: string } | null>(null)
 
   useEffect(() => {
     fetch('/api/projects')
@@ -68,6 +70,21 @@ function DailyLogsContent() {
       })
       .catch(() => setLoading(false))
   }, [projectFilter])
+
+  const handleWeeklyReport = async () => {
+    setGeneratingSummary(true)
+    setWeeklyReport(null)
+    try {
+      const res = await fetch('/api/daily-logs/weekly-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      if (!res.ok) throw new Error('Failed')
+      const data = await res.json()
+      setWeeklyReport({ summary: data.summary, label: `${data.weekStart} – ${data.weekEnd} (${data.logCount} logs)` })
+    } catch {
+      alert('Could not generate weekly summary.')
+    } finally {
+      setGeneratingSummary(false)
+    }
+  }
 
   const handleDownloadPdf = async (log: DailyLog) => {
     setDownloadingId(log.id)
@@ -137,13 +154,35 @@ function DailyLogsContent() {
               <p className="text-gray-400 mt-1">All projects</p>
             )}
           </div>
-          <Link
-            href={projectFilter ? `/daily-logs/new?projectId=${projectFilter}` : '/daily-logs/new'}
-            className="btn-primary"
-          >
-            + New Log
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleWeeklyReport}
+              disabled={generatingSummary}
+              className="text-sm border border-blueprint-grid text-gray-400 hover:text-white hover:border-gray-400 px-3 py-2 transition-colors disabled:opacity-50"
+            >
+              {generatingSummary ? 'Generating...' : 'Weekly Report'}
+            </button>
+            <Link
+              href={projectFilter ? `/daily-logs/new?projectId=${projectFilter}` : '/daily-logs/new'}
+              className="btn-primary"
+            >
+              + New Log
+            </Link>
+          </div>
         </div>
+
+        {weeklyReport && (
+          <div className="mb-6 p-5 bg-blueprint-paper/10 border border-blueprint-grid">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-sm font-bold text-safety-orange tracking-widest">WEEKLY FIELD REPORT</h2>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-500">{weeklyReport.label}</span>
+                <button onClick={() => setWeeklyReport(null)} className="text-xs text-gray-500 hover:text-white">✕</button>
+              </div>
+            </div>
+            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{weeklyReport.summary}</pre>
+          </div>
+        )}
 
         {/* Project filter */}
         {projects.length > 0 && (

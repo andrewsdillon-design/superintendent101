@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
 
+const PROJECT_SELECT = {
+  id: true,
+  title: true,
+  location: true,
+  status: true,
+  address: true,
+  permitNumber: true,
+  webPortalId: true,
+  portalType: true,
+  planNumber: true,
+  elevation: true,
+  electricalSide: true,
+} as const
+
 export async function GET(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -9,7 +23,7 @@ export async function GET(req: NextRequest) {
   const projects = await prisma.project.findMany({
     where: { userId, status: { not: 'COMPLETED' } },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, title: true, location: true, status: true },
+    select: PROJECT_SELECT,
   })
 
   return NextResponse.json({ projects })
@@ -20,7 +34,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { title, location } = body
+  const { title, location, address, permitNumber, webPortalId, portalType, planNumber, elevation, electricalSide } = body
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -31,9 +45,16 @@ export async function POST(req: NextRequest) {
       userId,
       title: title.trim(),
       location: location?.trim() || null,
+      address: address?.trim() || null,
+      permitNumber: permitNumber?.trim() || null,
+      webPortalId: webPortalId?.trim() || null,
+      portalType: portalType?.trim() || null,
+      planNumber: planNumber?.trim() || null,
+      elevation: elevation?.trim() || null,
+      electricalSide: electricalSide?.trim() || null,
       status: 'ACTIVE',
     },
-    select: { id: true, title: true, location: true, status: true },
+    select: PROJECT_SELECT,
   })
 
   return NextResponse.json({ project }, { status: 201 })

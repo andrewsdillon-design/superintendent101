@@ -25,6 +25,11 @@ interface Project {
   id: string
   title: string
   status: string
+  address?: string | null
+  permitNumber?: string | null
+  planNumber?: string | null
+  elevation?: string | null
+  electricalSide?: string | null
 }
 
 type TranscribeState = 'idle' | 'recording' | 'transcribing' | 'done' | 'paste'
@@ -95,6 +100,16 @@ function NewDailyLogForm() {
   useEffect(() => {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [])
+
+  // ── Project change — auto-fill header fields ─────────────────────────
+  function handleProjectChange(id: string) {
+    setProjectId(id)
+    if (!id) return
+    const p = projects.find(p => p.id === id)
+    if (!p) return
+    if (p.address && !address) setAddress(p.address)
+    if (p.permitNumber && !permitNumber) setPermitNumber(p.permitNumber)
+  }
 
   // ── Quick-create project ──────────────────────────────────────────────
   async function handleCreateProject() {
@@ -485,7 +500,7 @@ function NewDailyLogForm() {
               <div className="flex gap-2">
                 <select
                   value={projectId}
-                  onChange={e => setProjectId(e.target.value)}
+                  onChange={e => handleProjectChange(e.target.value)}
                   className="flex-1 bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
                 >
                   <option value="">No project</option>

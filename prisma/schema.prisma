@@ -65,19 +65,27 @@ enum Subscription {
 }
 
 model Project {
-  id          String        @id @default(cuid())
-  userId      String
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  location    String?
-  type        String?
-  sqft        Int?
-  status      ProjectStatus @default(ACTIVE)
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime      @default(now())
-  dailyLogs   DailyLog[]
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  location       String?
+  type           String?
+  sqft           Int?
+  status         ProjectStatus @default(ACTIVE)
+  startDate      DateTime?
+  endDate        DateTime?
+  // Persistent header data — auto-fills every daily log
+  address        String?
+  permitNumber   String?
+  webPortalId    String?
+  portalType     String?       // e.g. "ePlans", "ProjectDox", "Accela"
+  planNumber     String?       // residential plan set number
+  elevation      String?       // e.g. "A", "B", "C"
+  electricalSide String?       // e.g. "Left", "Right"
+  createdAt      DateTime      @default(now())
+  dailyLogs      DailyLog[]
 }
 
 enum ProjectStatus {

@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { title, description, location, type, sqft, status, startDate, endDate } = body
+  const { title, description, location, type, sqft, status, startDate, endDate,
+    address, permitNumber, webPortalId, portalType, planNumber, elevation, electricalSide } = body
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -43,6 +44,13 @@ export async function POST(request: NextRequest) {
       status: status || 'ACTIVE',
       startDate: startDate ? new Date(startDate) : null,
       endDate: endDate ? new Date(endDate) : null,
+      address: address?.trim() || null,
+      permitNumber: permitNumber?.trim() || null,
+      webPortalId: webPortalId?.trim() || null,
+      portalType: portalType?.trim() || null,
+      planNumber: planNumber?.trim() || null,
+      elevation: elevation?.trim() || null,
+      electricalSide: electricalSide?.trim() || null,
     },
   })
 
