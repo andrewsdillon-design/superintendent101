@@ -32,6 +32,20 @@ interface Project {
   electricalSide?: string | null
 }
 
+interface MultiLogEntry {
+  projectHint?: string
+  weather?: string
+  crewCounts?: Record<string, number>
+  workPerformed?: string
+  deliveries?: string
+  inspections?: string
+  issues?: string
+  safetyNotes?: string
+  address?: string
+  permitNumber?: string
+  rfi?: string
+}
+
 type TranscribeState = 'idle' | 'recording' | 'transcribing' | 'done' | 'paste'
 
 function formatTime(secs: number) {
@@ -78,6 +92,11 @@ function NewDailyLogForm() {
   const [showTranscript, setShowTranscript] = useState(false)
   const [audioFileName, setAudioFileName] = useState('')
   const [pasteText, setPasteText] = useState('')
+
+  // Multi-lot state
+  const [multiLogs, setMultiLogs] = useState<MultiLogEntry[]>([])
+  const [multiProjectSelections, setMultiProjectSelections] = useState<Record<number, string>>({})
+  const [savingMulti, setSavingMulti] = useState(false)
 
   // Submission
   const [submitting, setSubmitting] = useState(false)
@@ -187,11 +206,52 @@ function NewDailyLogForm() {
     e.target.value = ''
   }
 
+  // ── Shared: apply structured AI response to form or multi-lot state ──
+  function applyStructured(s: any, rawTranscript: string) {
+    setTranscript(rawTranscript)
+
+    // Multi-lot response
+    if (s.multi === true && Array.isArray(s.logs) && s.logs.length > 1) {
+      setMultiLogs(s.logs)
+      // Pre-select projects by fuzzy match on projectHint
+      const selections: Record<number, string> = {}
+      s.logs.forEach((log: MultiLogEntry, i: number) => {
+        if (log.projectHint) {
+          const hint = log.projectHint.toLowerCase()
+          const match = projects.find(p => p.title.toLowerCase().includes(hint) || hint.includes(p.title.toLowerCase()))
+          selections[i] = match?.id ?? ''
+        }
+      })
+      setMultiProjectSelections(selections)
+      setTranscribeState('done')
+      return
+    }
+
+    // Single log — fill form
+    setMultiLogs([])
+    if (s.weather) setWeather(s.weather as Weather)
+    if (s.workPerformed) setWorkPerformed(s.workPerformed)
+    if (s.deliveries) setDeliveries(s.deliveries)
+    if (s.inspections) setInspections(s.inspections)
+    if (s.issues) setIssues(s.issues)
+    if (s.safetyNotes) setSafetyNotes(s.safetyNotes)
+    if (s.address) setAddress(s.address)
+    if (s.permitNumber) setPermitNumber(s.permitNumber)
+    if (s.rfi) setRfi(s.rfi)
+    if (s.crewCounts && typeof s.crewCounts === 'object') {
+      const rows: CrewRow[] = Object.entries(s.crewCounts as Record<string, number>)
+        .map(([trade, count]) => ({ trade, count: String(count) }))
+      if (rows.length > 0) setCrew(rows)
+    }
+    setTranscribeState('done')
+  }
+
   async function transcribeBlob(blob: Blob, filename: string) {
     setTranscribeState('transcribing')
     setTranscribeError('')
     const fd = new FormData()
     fd.append('audio', blob, filename)
+    fd.append('projects', JSON.stringify(projects.map(p => ({ id: p.id, title: p.title }))))
     try {
       const res = await fetch('/api/daily-logs/transcribe', { method: 'POST', body: fd })
       const data = await res.json()
@@ -200,23 +260,7 @@ function NewDailyLogForm() {
         setTranscribeState('idle')
         return
       }
-      setTranscript(data.transcript ?? '')
-      const s = data.structured ?? {}
-      if (s.weather) setWeather(s.weather.split(',')[0].trim() as Weather || s.weather)
-      if (s.workPerformed) setWorkPerformed(s.workPerformed)
-      if (s.deliveries) setDeliveries(s.deliveries)
-      if (s.inspections) setInspections(s.inspections)
-      if (s.issues) setIssues(s.issues)
-      if (s.safetyNotes) setSafetyNotes(s.safetyNotes)
-      if (s.address) setAddress(s.address)
-      if (s.permitNumber) setPermitNumber(s.permitNumber)
-      if (s.rfi) setRfi(s.rfi)
-      if (s.crewCounts && typeof s.crewCounts === 'object') {
-        const rows: CrewRow[] = Object.entries(s.crewCounts as Record<string, number>)
-          .map(([trade, count]) => ({ trade, count: String(count) }))
-        if (rows.length > 0) setCrew(rows)
-      }
-      setTranscribeState('done')
+      applyStructured(data.structured ?? {}, data.transcript ?? '')
     } catch {
       setTranscribeError('Network error during transcription.')
       setTranscribeState('idle')
@@ -230,6 +274,7 @@ function NewDailyLogForm() {
     setTranscribeError('')
     const fd = new FormData()
     fd.append('transcript', pasteText.trim())
+    fd.append('projects', JSON.stringify(projects.map(p => ({ id: p.id, title: p.title }))))
     try {
       const res = await fetch('/api/daily-logs/transcribe', { method: 'POST', body: fd })
       const data = await res.json()
@@ -238,27 +283,47 @@ function NewDailyLogForm() {
         setTranscribeState('paste')
         return
       }
-      setTranscript(pasteText.trim())
-      const s = data.structured ?? {}
-      if (s.weather) setWeather(s.weather.split(',')[0].trim() as Weather || s.weather)
-      if (s.workPerformed) setWorkPerformed(s.workPerformed)
-      if (s.deliveries) setDeliveries(s.deliveries)
-      if (s.inspections) setInspections(s.inspections)
-      if (s.issues) setIssues(s.issues)
-      if (s.safetyNotes) setSafetyNotes(s.safetyNotes)
-      if (s.address) setAddress(s.address)
-      if (s.permitNumber) setPermitNumber(s.permitNumber)
-      if (s.rfi) setRfi(s.rfi)
-      if (s.crewCounts && typeof s.crewCounts === 'object') {
-        const rows: CrewRow[] = Object.entries(s.crewCounts as Record<string, number>)
-          .map(([trade, count]) => ({ trade, count: String(count) }))
-        if (rows.length > 0) setCrew(rows)
-      }
       setPasteText('')
-      setTranscribeState('done')
+      applyStructured(data.structured ?? {}, pasteText.trim())
     } catch {
       setTranscribeError('Network error. Please try again.')
       setTranscribeState('paste')
+    }
+  }
+
+  // ── Save all multi-lot logs ───────────────────────────────────────────
+  async function handleSaveAllMulti() {
+    setSavingMulti(true)
+    try {
+      const logs = multiLogs.map((log, i) => ({
+        projectId: multiProjectSelections[i] || undefined,
+        date,
+        weather: log.weather ?? '',
+        crewCounts: log.crewCounts ?? {},
+        workPerformed: log.workPerformed ?? '',
+        deliveries: log.deliveries ?? '',
+        inspections: log.inspections ?? '',
+        issues: log.issues ?? '',
+        safetyNotes: log.safetyNotes ?? '',
+        address: log.address || null,
+        permitNumber: log.permitNumber || null,
+        rfi: log.rfi ?? '',
+      }))
+      const res = await fetch('/api/daily-logs/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logs }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setSubmitError(data.error || 'Failed to save logs.')
+        return
+      }
+      router.push('/daily-logs')
+    } catch {
+      setSubmitError('Network error. Please try again.')
+    } finally {
+      setSavingMulti(false)
     }
   }
 
@@ -462,7 +527,11 @@ function NewDailyLogForm() {
 
           {transcribeState === 'done' && (
             <div>
-              <p className="text-safety-green text-sm font-semibold mb-2">✓ Form auto-filled from voice note</p>
+              <p className="text-safety-green text-sm font-semibold mb-2">
+                {multiLogs.length > 1
+                  ? `✓ ${multiLogs.length} lots detected — review & save below`
+                  : '✓ Form auto-filled from voice note'}
+              </p>
               {transcript && (
                 <div>
                   <button
@@ -481,7 +550,7 @@ function NewDailyLogForm() {
               )}
               <button
                 type="button"
-                onClick={() => { setTranscribeState('idle'); setTranscript(''); setTranscribeError(''); setAudioFileName(''); setPasteText('') }}
+                onClick={() => { setTranscribeState('idle'); setTranscript(''); setTranscribeError(''); setAudioFileName(''); setPasteText(''); setMultiLogs([]) }}
                 className="text-xs text-gray-500 hover:text-white mt-2 block"
               >
                 Re-record / Upload / Paste different input
@@ -490,6 +559,68 @@ function NewDailyLogForm() {
           )}
           <p className="text-xs text-gray-600 mt-3">Audio is transcribed in-memory and not stored.</p>
         </div>
+
+        {/* ── Multi-lot review UI ─────────────────────────────────────── */}
+        {multiLogs.length > 1 && (
+          <div className="card mb-6 border-2 border-safety-yellow">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-safety-yellow text-sm uppercase tracking-wide">
+                {multiLogs.length} Lots Detected — Review &amp; Save
+              </h3>
+              <button
+                type="button"
+                onClick={() => setMultiLogs([])}
+                className="text-xs text-gray-500 hover:text-white"
+              >
+                ✕ Dismiss
+              </button>
+            </div>
+            <div className="space-y-4">
+              {multiLogs.map((log, i) => {
+                const crewTotal = Object.values(log.crewCounts ?? {}).reduce((s, n) => s + (n || 0), 0)
+                return (
+                  <div key={i} className="p-3 bg-blueprint-bg border border-blueprint-grid">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-xs font-bold text-safety-orange tracking-wide">
+                          {log.projectHint || `Lot ${i + 1}`}
+                        </p>
+                        {log.address && <p className="text-xs text-gray-400 mt-0.5">📍 {log.address}</p>}
+                        {log.permitNumber && <p className="text-xs text-gray-400">📋 Permit: {log.permitNumber}</p>}
+                        <div className="flex gap-3 mt-1 text-xs text-gray-500">
+                          {log.weather && <span>{log.weather}</span>}
+                          {crewTotal > 0 && <span>{crewTotal} crew</span>}
+                        </div>
+                      </div>
+                      <select
+                        value={multiProjectSelections[i] ?? ''}
+                        onChange={e => setMultiProjectSelections(prev => ({ ...prev, [i]: e.target.value }))}
+                        className="text-xs bg-blueprint-bg border border-blueprint-grid p-1.5 text-white focus:outline-none focus:border-neon-cyan ml-3 flex-shrink-0"
+                      >
+                        <option value="">No project</option>
+                        {projects.map(p => (
+                          <option key={p.id} value={p.id}>{p.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {log.workPerformed && (
+                      <p className="text-xs text-gray-400 line-clamp-2 mt-1">{log.workPerformed}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {submitError && <p className="text-red-400 text-sm mt-3">{submitError}</p>}
+            <button
+              type="button"
+              onClick={handleSaveAllMulti}
+              disabled={savingMulti}
+              className="btn-primary w-full mt-4 disabled:opacity-50"
+            >
+              {savingMulti ? 'Saving...' : `Save All ${multiLogs.length} Logs →`}
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
 
