@@ -22,8 +22,11 @@ export async function middleware(request: NextRequest) {
 
   // Unauthenticated users → login
   if (!token) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('callbackUrl', request.url)
+    // Use NEXTAUTH_URL as the base so reverse-proxy internal hostnames don't leak
+    const base = process.env.NEXTAUTH_URL ?? request.nextUrl.origin
+    const loginUrl = new URL('/login', base)
+    const callbackUrl = new URL(pathname, base)
+    loginUrl.searchParams.set('callbackUrl', callbackUrl.toString())
     return NextResponse.redirect(loginUrl)
   }
 
