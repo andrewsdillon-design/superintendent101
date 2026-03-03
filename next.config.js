@@ -22,8 +22,9 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: true,
-  serverExternalPackages: ['@react-pdf/renderer'],
-  experimental: {},
+  experimental: {
+    serverComponentsExternalPackages: ['@react-pdf/renderer'],
+  },
   compress: true,
   poweredByHeader: false,
   images: {
