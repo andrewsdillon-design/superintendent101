@@ -89,6 +89,7 @@ export default function AdminPage() {
               <span className="text-white font-semibold">Users</span>
               <Link href="/admin/analytics" className="text-gray-400 hover:text-white">Analytics</Link>
               <Link href="/admin/companies" className="text-gray-400 hover:text-white">Companies</Link>
+              <Link href="/admin/bug-reports" className="text-gray-400 hover:text-white">Bug Reports</Link>
             </nav>
           </div>
           <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">← Dashboard</Link>

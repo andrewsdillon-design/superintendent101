@@ -57,6 +57,14 @@ function DailyLogsContent() {
   const [emailError, setEmailError] = useState('')
   const [emailSent, setEmailSent] = useState(false)
 
+  // Bug report modal
+  const [bugOpen, setBugOpen] = useState(false)
+  const [bugCategory, setBugCategory] = useState('bug')
+  const [bugDescription, setBugDescription] = useState('')
+  const [bugSending, setBugSending] = useState(false)
+  const [bugSent, setBugSent] = useState(false)
+  const [bugError, setBugError] = useState('')
+
   useEffect(() => {
     fetch('/api/projects')
       .then(r => r.json())
@@ -160,6 +168,32 @@ function DailyLogsContent() {
 
   const activeProject = projects.find(p => p.id === projectFilter)
 
+  async function handleBugReport(e: React.FormEvent) {
+    e.preventDefault()
+    if (!bugDescription.trim()) return
+    setBugSending(true)
+    setBugError('')
+    try {
+      const res = await fetch('/api/bug-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: bugCategory,
+          description: bugDescription,
+          deviceInfo: { platform: 'web', userAgent: navigator.userAgent },
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to send')
+      setBugSent(true)
+      setBugDescription('')
+      setTimeout(() => { setBugOpen(false); setBugSent(false) }, 2000)
+    } catch {
+      setBugError('Failed to send. Please try again.')
+    } finally {
+      setBugSending(false)
+    }
+  }
+
   return (
     <div className="min-h-screen blueprint-bg">
       <header className="border-b border-blueprint-grid bg-blueprint-bg/80 p-4 sticky top-0 z-10">
@@ -177,6 +211,14 @@ function DailyLogsContent() {
               <Link href="/admin" className="text-xs text-safety-orange hover:underline hidden sm:block">Admin</Link>
             )}
             <Link href="/profile" className="text-sm text-gray-400 hover:text-white hidden sm:block">Profile</Link>
+            <button
+              onClick={() => { setBugOpen(true); setBugSent(false); setBugError('') }}
+              title="Report a problem"
+              className="text-sm text-gray-400 hover:text-safety-orange transition-colors hidden sm:flex items-center gap-1"
+            >
+              <span className="text-base">⚠</span>
+              <span className="text-xs">Report</span>
+            </button>
             <button onClick={() => signOut({ callbackUrl: '/' })} className="text-sm text-gray-400 hover:text-white">
               Sign Out
             </button>
@@ -470,6 +512,74 @@ function DailyLogsContent() {
                 {sendingEmail ? 'Sending...' : 'Send Report'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bug Report Modal */}
+      {bugOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f1829] border border-slate-700 rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-white font-bold text-lg mb-1">Report a Problem</h2>
+            <p className="text-slate-400 text-sm mb-4">Tell us what&apos;s wrong and we&apos;ll fix it fast.</p>
+
+            {bugSent ? (
+              <p className="text-safety-green text-sm font-semibold py-4 text-center">✓ Report sent — thank you!</p>
+            ) : (
+              <form onSubmit={handleBugReport} className="space-y-4">
+                <div className="flex gap-2">
+                  {[
+                    { value: 'bug', label: '🐛 Bug' },
+                    { value: 'feedback', label: '💬 Feedback' },
+                    { value: 'feature', label: '💡 Feature' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setBugCategory(opt.value)}
+                      className={`flex-1 text-xs py-2 rounded border font-bold transition-colors ${
+                        bugCategory === opt.value
+                          ? 'bg-[#00e5ff]/20 text-[#00e5ff] border-[#00e5ff]/40'
+                          : 'bg-transparent text-slate-400 border-slate-700 hover:border-slate-500'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  value={bugDescription}
+                  onChange={e => setBugDescription(e.target.value)}
+                  placeholder={bugCategory === 'bug'
+                    ? 'Describe what happened and what you expected...'
+                    : bugCategory === 'feature'
+                    ? 'Describe the feature you\'d like to see...'
+                    : 'Share your feedback...'}
+                  rows={4}
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded p-3 text-white text-sm placeholder-slate-500 resize-none focus:outline-none focus:border-[#00e5ff]/50"
+                />
+
+                {bugError && <p className="text-red-400 text-xs">{bugError}</p>}
+
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setBugOpen(false)}
+                    className="text-sm text-slate-400 hover:text-white px-4 py-2"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={bugSending || !bugDescription.trim()}
+                    className="btn-primary text-sm disabled:opacity-50"
+                  >
+                    {bugSending ? 'Sending...' : 'Submit'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

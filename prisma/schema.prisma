@@ -315,3 +315,16 @@ enum CompanyRole {
   OWNER
   MEMBER
 }
+
+// ─── Bug / Feedback Reports ────────────────────────────────────────────────────
+
+model BugReport {
+  id          String   @id @default(cuid())
+  userId      String?
+  userEmail   String?
+  category    String   @default("bug")   // "bug" | "feedback" | "feature"
+  description String   @db.Text
+  deviceInfo  String?  @db.Text          // JSON string: platform, browser, OS, appVersion
+  status      String   @default("open")  // "open" | "in_progress" | "resolved" | "wont_fix"
+  createdAt   DateTime @default(now())
+}

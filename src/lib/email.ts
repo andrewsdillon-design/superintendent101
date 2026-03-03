@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db'
 import { randomBytes } from 'crypto'
 import { decrypt } from './encrypt'
 
-function getResend() {
+export function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
 }
 
@@ -232,7 +232,7 @@ export async function sendReportEmail(opts: ReportEmailOptions, smtp?: SmtpConfi
     const { error } = await getResend().emails.send({
       from: `ProFieldHub <${from}>`,
       to: opts.to,
-      reply_to: opts.replyTo,
+      replyTo: opts.replyTo,
       subject: opts.subject,
       html: opts.html,
       text: opts.text,
