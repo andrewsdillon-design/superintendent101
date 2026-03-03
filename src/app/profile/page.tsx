@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import MobileNav from '@/components/mobile-nav'
 
 function initials(name: string) {
@@ -35,6 +35,17 @@ function ProfileContent() {
 
   const [managingBilling, setManagingBilling] = useState(false)
   const [exportingData, setExportingData] = useState(false)
+  const [structureModel, setStructureModel] = useState('gpt-4o')
+  const [savingModel, setSavingModel] = useState(false)
+  const [modelSaved, setModelSaved] = useState(false)
+
+  // Load current model preference
+  useEffect(() => {
+    fetch('/api/mobile/profile')
+      .then(r => r.json())
+      .then(d => { if (d.structureModel) setStructureModel(d.structureModel) })
+      .catch(() => {})
+  }, [])
 
   const handleManageBilling = async () => {
     setManagingBilling(true)
@@ -70,6 +81,25 @@ function ProfileContent() {
       alert('Network error.')
     } finally {
       setExportingData(false)
+    }
+  }
+
+  const handleSaveModel = async (model: string) => {
+    setSavingModel(true)
+    setModelSaved(false)
+    try {
+      await fetch('/api/mobile/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ structureModel: model }),
+      })
+      setStructureModel(model)
+      setModelSaved(true)
+      setTimeout(() => setModelSaved(false), 3000)
+    } catch {
+      alert('Failed to save model preference.')
+    } finally {
+      setSavingModel(false)
     }
   }
 
@@ -172,6 +202,40 @@ function ProfileContent() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* AI Model Settings */}
+        <div className="card mt-6">
+          <h3 className="font-bold text-neon-cyan mb-1">AI STRUCTURING MODEL</h3>
+          <p className="text-xs text-gray-500 mb-4">Choose which AI model structures your voice transcripts into field reports.</p>
+          <div className="space-y-3">
+            {[
+              { id: 'gpt-4o', label: 'GPT-4o', desc: 'OpenAI · $2.50/1M in · $10.00/1M out · Excellent accuracy' },
+              { id: 'grok-4.1-reasoning', label: 'xAI Grok-4.1 Reasoning', desc: 'xAI · Reasoning model · Advanced multi-step logic' },
+            ].map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => handleSaveModel(opt.id)}
+                disabled={savingModel}
+                className={`w-full text-left p-3 border rounded transition-colors disabled:opacity-50 ${
+                  structureModel === opt.id
+                    ? 'border-neon-cyan bg-neon-cyan/10'
+                    : 'border-blueprint-grid hover:border-gray-500'
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <span className={`text-sm font-semibold ${structureModel === opt.id ? 'text-neon-cyan' : 'text-white'}`}>
+                    {opt.label}
+                  </span>
+                  {structureModel === opt.id && (
+                    <span className="text-xs text-neon-cyan font-bold">ACTIVE</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+          {modelSaved && <p className="text-xs text-safety-green mt-3">Model preference saved.</p>}
         </div>
 
         <div className="card mt-6">

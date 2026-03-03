@@ -4,7 +4,36 @@ import { getUserId } from '@/lib/get-user-id'
 import { prisma } from '@/lib/db'
 import { rateLimit } from '@/lib/rate-limit'
 
+// OpenAI client (transcription + default structuring)
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
+
+// xAI client — OpenAI-compatible API, used when user selects a Grok model
+const xai = process.env.XAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.XAI_API_KEY, baseURL: 'https://api.x.ai/v1' })
+  : null
+
+// Per-model pricing for cost logging ($ per 1M tokens)
+const MODEL_PRICING: Record<string, { inputPerM: number; outputPerM: number }> = {
+  'gpt-4o':              { inputPerM: 2.50,  outputPerM: 10.00 },
+  'gpt-4o-mini':         { inputPerM: 0.15,  outputPerM: 0.60  },
+  'grok-4.1-reasoning':  { inputPerM: 5.00,  outputPerM: 15.00 }, // update when xAI publishes official pricing
+}
+
+function getStructureClient(model: string): OpenAI | null {
+  if (model.startsWith('grok-')) return xai
+  return openai
+}
+
+function estimateTranscribeCost(bytes: number): number {
+  // whisper-1: $0.006/min — estimate from file size at ~128kbps
+  const minutes = bytes / (128 * 1024 / 8) / 60
+  return Math.max(0.001, minutes * 0.006)
+}
+
+function estimateStructureCost(model: string, inputTokens: number, outputTokens: number): number {
+  const pricing = MODEL_PRICING[model] ?? { inputPerM: 2.50, outputPerM: 10.00 }
+  return (inputTokens / 1_000_000) * pricing.inputPerM + (outputTokens / 1_000_000) * pricing.outputPerM
+}
 
 function buildSystemPrompt(builderType: string, projectTitles: string[]): string {
   const projectsStr = projectTitles.length > 0 ? projectTitles.join(', ') : 'none listed'
@@ -47,17 +76,6 @@ const ALLOWED_TYPES: Record<string, string> = {
   'video/quicktime': 'mp4',
 }
 
-// whisper-1: $0.006/min  →  estimate from file size at ~128kbps
-function estimateTranscribeCost(bytes: number): number {
-  const minutes = bytes / (128 * 1024 / 8) / 60
-  return Math.max(0.001, minutes * 0.006)
-}
-
-// gpt-4o: $2.50/1M input tokens, $10.00/1M output tokens
-function estimateStructureCost(inputTokens: number, outputTokens: number): number {
-  return (inputTokens / 1_000_000) * 2.50 + (outputTokens / 1_000_000) * 10.00
-}
-
 export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -67,6 +85,19 @@ export async function POST(req: NextRequest) {
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 503 })
+  }
+
+  // Look up user's preferred structure model
+  const userSettings = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { structureModel: true },
+  })
+  const structureModel = userSettings?.structureModel ?? 'gpt-4o'
+
+  // Validate the client is available for this model
+  const structureClient = getStructureClient(structureModel)
+  if (!structureClient) {
+    return NextResponse.json({ error: `AI model "${structureModel}" is not configured on this server` }, { status: 503 })
   }
 
   let formData: FormData
@@ -102,7 +133,7 @@ export async function POST(req: NextRequest) {
       // Text path — skip transcription, go straight to structuring
       transcript = pastedTranscript.trim()
     } else {
-      // Audio path — Step 1: Transcribe with whisper-1
+      // Audio path — Step 1: Transcribe with whisper-1 (always OpenAI)
       const ext = ALLOWED_TYPES[audioFile!.type] ?? 'm4a'
       const audioBuffer = await audioFile!.arrayBuffer()
       const file = await toFile(Buffer.from(audioBuffer), `field-note.${ext}`, {
@@ -132,10 +163,10 @@ export async function POST(req: NextRequest) {
       }).catch(() => {})
     }
 
-    // Step 2: Structure with gpt-4o
+    // Step 2: Structure with user's chosen model
     const systemPrompt = buildSystemPrompt(builderType, projectTitles)
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const completion = await structureClient.chat.completions.create({
+      model: structureModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: transcript },
@@ -151,11 +182,11 @@ export async function POST(req: NextRequest) {
     prisma.apiUsageLog.create({
       data: {
         userId,
-        service: 'gpt-4o',
+        service: structureModel,
         action: 'structure',
         inputTokens,
         outputTokens,
-        costUsd: estimateStructureCost(inputTokens, outputTokens),
+        costUsd: estimateStructureCost(structureModel, inputTokens, outputTokens),
       },
     }).catch(() => {})
 

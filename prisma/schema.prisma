@@ -35,6 +35,7 @@ model User {
   notionDbId      String?
   betaTester      Boolean      @default(false)   // free for life — Stripe webhook skips these
   builderType     String?      // 'RESIDENTIAL' | 'COMMERCIAL'
+  structureModel  String       @default("gpt-4o")  // AI model for structuring transcripts
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 

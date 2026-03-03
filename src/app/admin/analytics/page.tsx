@@ -80,9 +80,9 @@ const MODEL_INFO: Record<string, { label: string; pricing: string; barColor: str
     barColor: 'bg-safety-orange',
     textColor: 'text-safety-orange',
   },
-  'groq/llama-3.3-70b-versatile': {
-    label: 'Groq Llama 3.3 70B',
-    pricing: 'Structuring · $0.59/1M in · $0.79/1M out',
+  'grok-4.1-reasoning': {
+    label: 'xAI Grok-4.1 Reasoning',
+    pricing: 'Structuring · reasoning model',
     barColor: 'bg-safety-green',
     textColor: 'text-safety-green',
   },
