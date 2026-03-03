@@ -35,7 +35,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (betaTester === true) data.subscription = 'DUST_LOGS'
   }
   if (password && typeof password === 'string' && password.length >= 8) {
-    data.password = await bcrypt.hash(password, 12)
+    data.passwordHash = await bcrypt.hash(password, 12)
   }
 
   if (Object.keys(data).length === 0) {

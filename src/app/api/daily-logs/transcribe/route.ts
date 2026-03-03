@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI, { toFile } from 'openai'
 import { getUserId } from '@/lib/get-user-id'
 import { prisma } from '@/lib/db'
+import { rateLimit } from '@/lib/rate-limit'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? '' })
 
@@ -60,6 +61,9 @@ function estimateStructureCost(inputTokens: number, outputTokens: number): numbe
 export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rl = rateLimit(`transcribe:${userId}`, { limit: 20, windowMs: 60 * 60 * 1000 })
+  if (!rl.success) return NextResponse.json({ error: 'Rate limit exceeded — try again later' }, { status: 429 })
 
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 503 })

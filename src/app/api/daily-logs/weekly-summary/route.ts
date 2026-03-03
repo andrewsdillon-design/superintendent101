@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
 import OpenAI from 'openai'
+import { rateLimit } from '@/lib/rate-limit'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -12,12 +13,18 @@ export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const rl = rateLimit(`weekly-summary:${userId}`, { limit: 10, windowMs: 60 * 60 * 1000 })
+  if (!rl.success) return NextResponse.json({ error: 'Rate limit exceeded — try again later' }, { status: 429 })
+
   const body = await req.json().catch(() => ({}))
 
   // Determine week range
   let weekStart: Date
   if (body.weekStart) {
     weekStart = new Date(body.weekStart + 'T00:00:00')
+    // Clamp to 90 days back to prevent unbounded prompt sizes
+    const earliest = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+    if (weekStart < earliest) weekStart = earliest
   } else {
     // Default to last Monday (or today if today is Monday)
     const now = new Date()

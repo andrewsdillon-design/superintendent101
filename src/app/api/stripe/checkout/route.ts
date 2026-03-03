@@ -42,15 +42,15 @@ export async function POST(request: NextRequest) {
     await prisma.user.update({ where: { id: dbUser.id }, data: { stripeCustomerId: customerId } })
   }
 
-  const origin = request.headers.get('origin') ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  const appUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/profile?upgraded=1`,
-    cancel_url: `${origin}/upgrade`,
+    success_url: `${appUrl}/profile?upgraded=1`,
+    cancel_url: `${appUrl}/upgrade`,
     metadata: { userId: dbUser.id, tier },
   })
 

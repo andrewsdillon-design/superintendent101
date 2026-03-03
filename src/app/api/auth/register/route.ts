@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    const rl = rateLimit(`register:${ip}`, { limit: 10, windowMs: 60 * 60 * 1000 })
+    if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+
     const body = await request.json()
     const { firstName, lastName, email, username, password, skills, yearsExperience } = body
 

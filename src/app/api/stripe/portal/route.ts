@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No billing account found' }, { status: 400 })
   }
 
-  const origin = request.headers.get('origin') ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  const appUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
   const portalSession = await getStripe().billingPortal.sessions.create({
     customer: dbUser.stripeCustomerId,
-    return_url: `${origin}/profile`,
+    return_url: `${appUrl}/profile`,
   })
 
   return NextResponse.json({ url: portalSession.url })
