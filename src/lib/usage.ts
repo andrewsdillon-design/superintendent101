@@ -23,7 +23,7 @@ export async function logWhisperUsage(
     await prisma.apiUsageLog.create({
       data: {
         userId,
-        service: 'whisper',
+        service: 'whisper-1',
         action: 'transcribe',
         fileSizeBytes,
         costUsd,
@@ -52,7 +52,7 @@ export async function logGpt4oUsage(
     await prisma.apiUsageLog.create({
       data: {
         userId,
-        service: 'gpt4o',
+        service: 'gpt-4o',
         action,
         inputTokens,
         outputTokens,

@@ -3,19 +3,22 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-type Period = '30d' | '90d' | 'all'
+type Period = 'today' | '30d' | '90d' | 'all'
+
+interface ServiceBreakdown {
+  service: string
+  calls: number
+  costUsd: number
+}
 
 interface Overview {
   totalCostUsd: number
   totalCalls: number
-  whisperCalls: number
-  gpt4oCalls: number
+  byService: ServiceBreakdown[]
   uniqueActiveUsers: number
   totalUsers: number
   totalJobSites: number
   totalLogs: number
-  whisperCost: number
-  gpt4oCost: number
 }
 
 interface UserRow {
@@ -25,8 +28,8 @@ interface UserRow {
   username: string
   subscription: string
   calls: number
-  whisperCalls: number
-  gpt4oCalls: number
+  transcribeCalls: number
+  structureCalls: number
   costUsd: number
   lastUsed: string
 }
@@ -55,6 +58,43 @@ interface Analytics {
   byUser: UserRow[]
   daily: DayRow[]
   recent: RecentRow[]
+}
+
+// Add new models here as you adopt them for model arbitrage
+const MODEL_INFO: Record<string, { label: string; pricing: string; barColor: string; textColor: string }> = {
+  'whisper-1': {
+    label: 'Whisper-1',
+    pricing: 'Transcription · $0.006/min',
+    barColor: 'bg-neon-cyan',
+    textColor: 'text-neon-cyan',
+  },
+  'gpt-4o': {
+    label: 'GPT-4o',
+    pricing: 'Structuring · $2.50/1M in · $10.00/1M out',
+    barColor: 'bg-safety-yellow',
+    textColor: 'text-safety-yellow',
+  },
+  'gpt-4o-mini': {
+    label: 'GPT-4o mini',
+    pricing: 'Structuring · $0.15/1M in · $0.60/1M out',
+    barColor: 'bg-safety-orange',
+    textColor: 'text-safety-orange',
+  },
+  'groq/llama-3.3-70b-versatile': {
+    label: 'Groq Llama 3.3 70B',
+    pricing: 'Structuring · $0.59/1M in · $0.79/1M out',
+    barColor: 'bg-safety-green',
+    textColor: 'text-safety-green',
+  },
+}
+
+function getModelInfo(service: string) {
+  return MODEL_INFO[service] ?? {
+    label: service,
+    pricing: '',
+    barColor: 'bg-gray-500',
+    textColor: 'text-gray-400',
+  }
 }
 
 function fmt(n: number, digits = 4) {
@@ -127,10 +167,10 @@ export default function AnalyticsPage() {
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold text-safety-orange">API ANALYTICS</h1>
-            <p className="text-gray-400 text-sm mt-1">Usage and cost across all users and services</p>
+            <p className="text-gray-400 text-sm mt-1">Usage and cost across all users and models</p>
           </div>
-          <div className="flex gap-2">
-            {(['30d', '90d', 'all'] as Period[]).map(p => (
+          <div className="flex gap-2 flex-wrap">
+            {(['today', '30d', '90d', 'all'] as Period[]).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
@@ -140,7 +180,7 @@ export default function AnalyticsPage() {
                     : 'border-blueprint-grid text-gray-400 hover:text-white'
                 }`}
               >
-                {p === '30d' ? 'Last 30 Days' : p === '90d' ? 'Last 90 Days' : 'All Time'}
+                {p === 'today' ? 'Today' : p === '30d' ? 'Last 30 Days' : p === '90d' ? 'Last 90 Days' : 'All Time'}
               </button>
             ))}
           </div>
@@ -175,79 +215,70 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* ── Cost by service ── */}
+            {/* ── Cost by model (auto-detected) ── */}
             <div className="card">
-              <h2 className="font-bold text-sm uppercase text-gray-400 mb-4">Cost by Service</h2>
-              <div className="space-y-4">
-
-                {/* Transcription */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <div>
-                      <span className="text-sm font-semibold text-white">GPT-4o-mini Transcribe</span>
-                      <span className="text-xs text-gray-500 ml-2">Transcription · $0.003/min</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-neon-cyan">{fmtShort(ov.whisperCost)}</span>
-                      <span className="text-xs text-gray-500 ml-2">{ov.whisperCalls} calls</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Bar value={ov.whisperCost} max={ov.totalCostUsd} color="bg-neon-cyan" />
-                    <span className="text-xs text-gray-500 w-10 text-right">
-                      {ov.totalCostUsd > 0 ? Math.round(ov.whisperCost / ov.totalCostUsd * 100) : 0}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Structuring */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <div>
-                      <span className="text-sm font-semibold text-white">GPT-4o-mini</span>
-                      <span className="text-xs text-gray-500 ml-2">Structuring · $0.15/1M in · $0.60/1M out</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-safety-yellow">{fmtShort(ov.gpt4oCost)}</span>
-                      <span className="text-xs text-gray-500 ml-2">{ov.gpt4oCalls} calls</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Bar value={ov.gpt4oCost} max={ov.totalCostUsd} color="bg-safety-yellow" />
-                    <span className="text-xs text-gray-500 w-10 text-right">
-                      {ov.totalCostUsd > 0 ? Math.round(ov.gpt4oCost / ov.totalCostUsd * 100) : 0}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Daily cost chart ── */}
-            <div className="card">
-              <h2 className="font-bold text-sm uppercase text-gray-400 mb-4">Daily Cost — Last {period === '90d' ? '90' : '30'} Days</h2>
-              {data!.daily.every(d => d.costUsd === 0) ? (
+              <h2 className="font-bold text-sm uppercase text-gray-400 mb-4">Cost by Model</h2>
+              {ov.byService.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-4">No API usage in this period yet.</p>
               ) : (
-                <div className="space-y-1">
-                  {data!.daily.filter(d => d.calls > 0).map(day => (
-                    <div key={day.date} className="flex items-center gap-3 text-xs">
-                      <span className="text-gray-500 w-24 flex-shrink-0">{day.date}</span>
-                      <div className="flex-1 h-4 bg-blueprint-grid rounded overflow-hidden">
-                        <div
-                          className="h-full bg-neon-cyan/70 rounded"
-                          style={{ width: `${Math.max(2, (day.costUsd / maxDailyCost) * 100)}%` }}
-                        />
+                <div className="space-y-4">
+                  {ov.byService.map(s => {
+                    const info = getModelInfo(s.service)
+                    return (
+                      <div key={s.service}>
+                        <div className="flex justify-between items-center mb-1">
+                          <div>
+                            <span className={`text-sm font-semibold ${info.textColor}`}>{info.label}</span>
+                            {info.pricing && (
+                              <span className="text-xs text-gray-500 ml-2">{info.pricing}</span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-neon-cyan">{fmtShort(s.costUsd)}</span>
+                            <span className="text-xs text-gray-500 ml-2">{s.calls} calls</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Bar value={s.costUsd} max={ov.totalCostUsd} color={info.barColor} />
+                          <span className="text-xs text-gray-500 w-10 text-right">
+                            {ov.totalCostUsd > 0 ? Math.round(s.costUsd / ov.totalCostUsd * 100) : 0}%
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-neon-cyan w-16 text-right">{fmt(day.costUsd)}</span>
-                      <span className="text-gray-600 w-16 text-right">{day.calls} calls</span>
-                    </div>
-                  ))}
-                  {data!.daily.every(d => d.calls === 0) && (
-                    <p className="text-gray-500 text-sm text-center py-4">No activity yet.</p>
-                  )}
+                    )
+                  })}
                 </div>
               )}
             </div>
+
+            {/* ── Daily cost chart (hidden for today view) ── */}
+            {period !== 'today' && (
+              <div className="card">
+                <h2 className="font-bold text-sm uppercase text-gray-400 mb-4">Daily Cost — Last {period === '90d' ? '90' : '30'} Days</h2>
+                {data!.daily.every(d => d.costUsd === 0) ? (
+                  <p className="text-gray-500 text-sm text-center py-4">No API usage in this period yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {data!.daily.filter(d => d.calls > 0).map(day => (
+                      <div key={day.date} className="flex items-center gap-3 text-xs">
+                        <span className="text-gray-500 w-24 flex-shrink-0">{day.date}</span>
+                        <div className="flex-1 h-4 bg-blueprint-grid rounded overflow-hidden">
+                          <div
+                            className="h-full bg-neon-cyan/70 rounded"
+                            style={{ width: `${Math.max(2, (day.costUsd / maxDailyCost) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-neon-cyan w-16 text-right">{fmt(day.costUsd)}</span>
+                        <span className="text-gray-600 w-16 text-right">{day.calls} calls</span>
+                      </div>
+                    ))}
+                    {data!.daily.every(d => d.calls === 0) && (
+                      <p className="text-gray-500 text-sm text-center py-4">No activity yet.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Per-user breakdown ── */}
             <div className="card overflow-x-auto">
@@ -261,7 +292,7 @@ export default function AnalyticsPage() {
                       <th className="pb-3 pr-4">User</th>
                       <th className="pb-3 pr-4">Plan</th>
                       <th className="pb-3 pr-4 text-right">Transcribe</th>
-                      <th className="pb-3 pr-4 text-right">GPT-4o-mini</th>
+                      <th className="pb-3 pr-4 text-right">Structure</th>
                       <th className="pb-3 pr-4 text-right">Total Calls</th>
                       <th className="pb-3 pr-4">Cost</th>
                       <th className="pb-3 text-right">Last Used</th>
@@ -277,8 +308,8 @@ export default function AnalyticsPage() {
                         <td className={`py-3 pr-4 text-xs font-semibold ${subColor[u.subscription] ?? ''}`}>
                           {u.subscription}
                         </td>
-                        <td className="py-3 pr-4 text-right text-gray-300">{u.whisperCalls}</td>
-                        <td className="py-3 pr-4 text-right text-gray-300">{u.gpt4oCalls}</td>
+                        <td className="py-3 pr-4 text-right text-gray-300">{u.transcribeCalls}</td>
+                        <td className="py-3 pr-4 text-right text-gray-300">{u.structureCalls}</td>
                         <td className="py-3 pr-4 text-right text-gray-300">{u.calls}</td>
                         <td className="py-3 pr-4">
                           <div className="flex items-center gap-2">
@@ -309,37 +340,38 @@ export default function AnalyticsPage() {
                     <tr className="border-b border-blueprint-grid text-gray-500 text-left">
                       <th className="pb-2 pr-4">Time</th>
                       <th className="pb-2 pr-4">User</th>
-                      <th className="pb-2 pr-4">Service</th>
+                      <th className="pb-2 pr-4">Model</th>
                       <th className="pb-2 pr-4">Tokens / Size</th>
                       <th className="pb-2 pr-4">Project</th>
                       <th className="pb-2 text-right">Cost</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data!.recent.map(r => (
-                      <tr key={r.id} className="border-b border-blueprint-grid/30 hover:bg-blueprint-paper/10">
-                        <td className="py-2 pr-4 text-gray-500">
-                          {new Date(r.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="py-2 pr-4 text-gray-300">@{r.user.username}</td>
-                        <td className="py-2 pr-4">
-                          <span className={r.service === 'whisper' ? 'text-neon-cyan' : 'text-safety-yellow'}>
-                            {r.service === 'whisper' ? 'GPT-4o-mini Transcribe' : 'GPT-4o-mini'}
-                          </span>
-                        </td>
-                        <td className="py-2 pr-4 text-gray-500">
-                          {r.service === 'whisper' && r.fileSizeBytes
-                            ? `${(r.fileSizeBytes / 1024).toFixed(0)} KB`
-                            : r.inputTokens
-                            ? `${r.inputTokens}in / ${r.outputTokens}out`
-                            : '—'}
-                        </td>
-                        <td className="py-2 pr-4 text-gray-500 max-w-[140px] truncate">
-                          {r.projectName ?? '—'}
-                        </td>
-                        <td className="py-2 text-right text-neon-cyan">{fmt(r.costUsd)}</td>
-                      </tr>
-                    ))}
+                    {data!.recent.map(r => {
+                      const info = getModelInfo(r.service)
+                      return (
+                        <tr key={r.id} className="border-b border-blueprint-grid/30 hover:bg-blueprint-paper/10">
+                          <td className="py-2 pr-4 text-gray-500">
+                            {new Date(r.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-300">@{r.user.username}</td>
+                          <td className="py-2 pr-4">
+                            <span className={info.textColor}>{info.label}</span>
+                          </td>
+                          <td className="py-2 pr-4 text-gray-500">
+                            {r.action === 'transcribe' && r.fileSizeBytes
+                              ? `${(r.fileSizeBytes / 1024).toFixed(0)} KB`
+                              : r.inputTokens
+                              ? `${r.inputTokens}in / ${r.outputTokens}out`
+                              : '—'}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-500 max-w-[140px] truncate">
+                            {r.projectName ?? '—'}
+                          </td>
+                          <td className="py-2 text-right text-neon-cyan">{fmt(r.costUsd)}</td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               )}

@@ -12,9 +12,17 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const period = searchParams.get('period') ?? '30d'
 
-  const since = period === 'all' ? new Date(0) :
-    period === '90d' ? new Date(Date.now() - 90 * 86400000) :
-    new Date(Date.now() - 30 * 86400000)
+  let since: Date
+  if (period === 'all') {
+    since = new Date(0)
+  } else if (period === '90d') {
+    since = new Date(Date.now() - 90 * 86400000)
+  } else if (period === 'today') {
+    since = new Date()
+    since.setUTCHours(0, 0, 0, 0)
+  } else {
+    since = new Date(Date.now() - 30 * 86400000)
+  }
 
   const [logs, userCount, jobSiteCount, logCount] = await Promise.all([
     prisma.apiUsageLog.findMany({
@@ -28,28 +36,35 @@ export async function GET(request: NextRequest) {
   ])
 
   // ── Overview ──────────────────────────────────────────────────────────
-  const totalCostUsd  = logs.reduce((sum, l) => sum + Number(l.costUsd), 0)
-  const whisperLogs   = logs.filter(l => l.service === 'whisper')
-  const gpt4oLogs     = logs.filter(l => l.service === 'gpt4o')
+  const totalCostUsd = logs.reduce((sum, l) => sum + Number(l.costUsd), 0)
   const uniqueUserIds = new Set(logs.map(l => l.userId))
+
+  // Dynamically group by service/model name — auto-detects any model used
+  const serviceMap = new Map<string, { calls: number; costUsd: number }>()
+  for (const log of logs) {
+    if (!serviceMap.has(log.service)) serviceMap.set(log.service, { calls: 0, costUsd: 0 })
+    const s = serviceMap.get(log.service)!
+    s.calls++
+    s.costUsd += Number(log.costUsd)
+  }
+  const byService = Array.from(serviceMap.entries())
+    .map(([service, { calls, costUsd }]) => ({ service, calls, costUsd }))
+    .sort((a, b) => b.costUsd - a.costUsd)
 
   const overview = {
     totalCostUsd,
-    totalCalls:   logs.length,
-    whisperCalls: whisperLogs.length,
-    gpt4oCalls:   gpt4oLogs.length,
+    totalCalls: logs.length,
+    byService,
     uniqueActiveUsers: uniqueUserIds.size,
-    totalUsers:   userCount,
+    totalUsers: userCount,
     totalJobSites: jobSiteCount,
-    totalLogs:    logCount,
-    whisperCost:  whisperLogs.reduce((s, l) => s + Number(l.costUsd), 0),
-    gpt4oCost:    gpt4oLogs.reduce((s, l) => s + Number(l.costUsd), 0),
+    totalLogs: logCount,
   }
 
   // ── Per-user breakdown ────────────────────────────────────────────────
   const byUserMap = new Map<string, {
     userId: string; name: string | null; email: string; username: string
-    subscription: string; calls: number; whisperCalls: number; gpt4oCalls: number
+    subscription: string; calls: number; transcribeCalls: number; structureCalls: number
     costUsd: number; lastUsed: Date
   }>()
 
@@ -58,23 +73,23 @@ export async function GET(request: NextRequest) {
     if (!byUserMap.has(u.id)) {
       byUserMap.set(u.id, {
         userId: u.id, name: u.name, email: u.email, username: u.username,
-        subscription: u.subscription, calls: 0, whisperCalls: 0,
-        gpt4oCalls: 0, costUsd: 0, lastUsed: log.createdAt,
+        subscription: u.subscription, calls: 0, transcribeCalls: 0,
+        structureCalls: 0, costUsd: 0, lastUsed: log.createdAt,
       })
     }
     const row = byUserMap.get(u.id)!
     row.calls++
     row.costUsd += Number(log.costUsd)
-    if (log.service === 'whisper') row.whisperCalls++
-    if (log.service === 'gpt4o')   row.gpt4oCalls++
+    if (log.action === 'transcribe') row.transcribeCalls++
+    else if (log.action === 'structure') row.structureCalls++
     if (log.createdAt > row.lastUsed) row.lastUsed = log.createdAt
   }
 
   const byUser = Array.from(byUserMap.values()).sort((a, b) => b.costUsd - a.costUsd)
 
-  // ── Daily breakdown (last 30 days) ────────────────────────────────────
+  // ── Daily breakdown ────────────────────────────────────────────────────
+  const days = period === '90d' ? 90 : period === 'today' ? 1 : 30
   const dailyMap = new Map<string, { date: string; costUsd: number; calls: number }>()
-  const days = period === '90d' ? 90 : 30
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0]
     dailyMap.set(d, { date: d, costUsd: 0, calls: 0 })

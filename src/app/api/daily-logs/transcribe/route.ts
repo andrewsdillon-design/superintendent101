@@ -47,22 +47,22 @@ const ALLOWED_TYPES: Record<string, string> = {
   'video/quicktime': 'mp4',
 }
 
-// gpt-4o-mini-transcribe: $0.003/min  →  estimate from file size at ~128kbps
+// whisper-1: $0.006/min  →  estimate from file size at ~128kbps
 function estimateTranscribeCost(bytes: number): number {
   const minutes = bytes / (128 * 1024 / 8) / 60
-  return Math.max(0.001, minutes * 0.003)
+  return Math.max(0.001, minutes * 0.006)
 }
 
-// gpt-4o-mini: $0.15/1M input tokens, $0.60/1M output tokens
+// gpt-4o: $2.50/1M input tokens, $10.00/1M output tokens
 function estimateStructureCost(inputTokens: number, outputTokens: number): number {
-  return (inputTokens / 1_000_000) * 0.15 + (outputTokens / 1_000_000) * 0.60
+  return (inputTokens / 1_000_000) * 2.50 + (outputTokens / 1_000_000) * 10.00
 }
 
 export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rl = rateLimit(`transcribe:${userId}`, { limit: 20, windowMs: 60 * 60 * 1000 })
+  const rl = rateLimit(`transcribe:${userId}`, { limit: 100, windowMs: 60 * 60 * 1000 })
   if (!rl.success) return NextResponse.json({ error: 'Rate limit exceeded — try again later' }, { status: 429 })
 
   if (!process.env.OPENAI_API_KEY) {
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       prisma.apiUsageLog.create({
         data: {
           userId,
-          service: 'whisper',
+          service: 'whisper-1',
           action: 'transcribe',
           fileSizeBytes: audioFile!.size,
           costUsd: estimateTranscribeCost(audioFile!.size),
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
     prisma.apiUsageLog.create({
       data: {
         userId,
-        service: 'gpt4o',
+        service: 'gpt-4o',
         action: 'structure',
         inputTokens,
         outputTokens,
