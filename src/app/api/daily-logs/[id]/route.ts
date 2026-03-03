@@ -30,6 +30,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const log = await prisma.dailyLog.update({
     where: { id: params.id },
     data: {
+      ...(body.date !== undefined && { date: new Date(body.date) }),
+      ...(body.projectId !== undefined && { projectId: body.projectId ?? null }),
       ...(body.weather !== undefined && { weather: body.weather }),
       ...(body.crewCounts !== undefined && { crewCounts: body.crewCounts }),
       ...(body.workPerformed !== undefined && { workPerformed: body.workPerformed }),
