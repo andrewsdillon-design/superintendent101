@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 type Report = {
@@ -51,8 +52,24 @@ export default function BugReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a] p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#0a0f1a]">
+      <header className="border-b border-white/10 bg-[#0a0f1a]/80 p-4 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard" className="font-display text-xl font-bold text-[#00e5ff]">ProFieldHub</Link>
+            <span className="text-orange-400 font-bold text-sm">ADMIN</span>
+            <nav className="flex gap-4 text-sm ml-4">
+              <Link href="/admin" className="text-slate-400 hover:text-white">Users</Link>
+              <Link href="/admin/analytics" className="text-slate-400 hover:text-white">Analytics</Link>
+              <Link href="/admin/companies" className="text-slate-400 hover:text-white">Companies</Link>
+              <span className="text-white font-semibold">Bug Reports</span>
+              <Link href="/admin/mail" className="text-slate-400 hover:text-white">Mail</Link>
+            </nav>
+          </div>
+          <Link href="/dashboard" className="text-sm text-slate-400 hover:text-white">← Dashboard</Link>
+        </div>
+      </header>
+      <div className="max-w-4xl mx-auto p-6">
         <h1 className="text-2xl font-black text-white mb-2">Bug Reports</h1>
         <p className="text-slate-400 text-sm mb-6">Feedback and issues submitted by users</p>
 

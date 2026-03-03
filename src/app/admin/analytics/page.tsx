@@ -156,6 +156,7 @@ export default function AnalyticsPage() {
               <span className="text-white font-semibold">Analytics</span>
               <Link href="/admin/companies" className="text-gray-400 hover:text-white">Companies</Link>
               <Link href="/admin/bug-reports" className="text-gray-400 hover:text-white">Bug Reports</Link>
+              <Link href="/admin/mail" className="text-gray-400 hover:text-white">Mail</Link>
             </nav>
           </div>
           <Link href="/admin" className="text-sm text-gray-400 hover:text-white">← Users</Link>
