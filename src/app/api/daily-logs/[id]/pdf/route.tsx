@@ -24,7 +24,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const filename = `daily-log-${log.date.toISOString().split('T')[0]}.pdf`
 
-  return new NextResponse(uint8.buffer as ArrayBuffer, {
+  // If the client requests JSON (mobile app), return base64 to avoid binary fetch issues in React Native
+  const accept = req.headers.get('accept') ?? ''
+  if (accept.includes('application/json')) {
+    return NextResponse.json({
+      base64: Buffer.from(uint8).toString('base64'),
+      filename,
+    })
+  }
+
+  return new NextResponse(Buffer.from(uint8), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
