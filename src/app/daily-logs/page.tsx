@@ -280,13 +280,18 @@ function DailyLogsContent() {
                         {log.workPerformed || '—'}
                       </td>
                       <td className="py-3 text-right">
-                        <button
-                          onClick={() => handleDownloadPdf(log)}
-                          disabled={downloadingId === log.id}
-                          className="text-xs text-neon-cyan hover:underline disabled:opacity-50 whitespace-nowrap"
-                        >
-                          {downloadingId === log.id ? 'Generating...' : 'Download PDF'}
-                        </button>
+                        <div className="flex gap-3 justify-end items-center">
+                          <Link href={`/daily-logs/${log.id}/edit`} className="text-xs text-gray-400 hover:text-white whitespace-nowrap">
+                            Edit
+                          </Link>
+                          <button
+                            onClick={() => handleDownloadPdf(log)}
+                            disabled={downloadingId === log.id}
+                            className="text-xs text-neon-cyan hover:underline disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {downloadingId === log.id ? 'Generating...' : 'Download PDF'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -314,13 +319,18 @@ function DailyLogsContent() {
                         <p className="text-sm text-gray-400 mt-2 line-clamp-2">{log.workPerformed}</p>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleDownloadPdf(log)}
-                      disabled={downloadingId === log.id}
-                      className="ml-4 text-xs text-neon-cyan hover:underline disabled:opacity-50 flex-shrink-0"
-                    >
-                      {downloadingId === log.id ? '...' : 'PDF'}
-                    </button>
+                    <div className="ml-4 flex flex-col gap-1 items-end flex-shrink-0">
+                      <Link href={`/daily-logs/${log.id}/edit`} className="text-xs text-gray-400 hover:text-white">
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDownloadPdf(log)}
+                        disabled={downloadingId === log.id}
+                        className="text-xs text-neon-cyan hover:underline disabled:opacity-50"
+                      >
+                        {downloadingId === log.id ? '...' : 'PDF'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

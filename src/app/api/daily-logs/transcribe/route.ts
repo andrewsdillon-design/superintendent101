@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       // Text path — skip transcription, go straight to structuring
       transcript = pastedTranscript.trim()
     } else {
-      // Audio path — Step 1: Transcribe with gpt-4o-mini-transcribe
+      // Audio path — Step 1: Transcribe with whisper-1
       const ext = ALLOWED_TYPES[audioFile!.type] ?? 'm4a'
       const audioBuffer = await audioFile!.arrayBuffer()
       const file = await toFile(Buffer.from(audioBuffer), `field-note.${ext}`, {
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
 
       const transcription = await openai.audio.transcriptions.create({
         file,
-        model: 'gpt-4o-mini-transcribe',
+        model: 'whisper-1',
         language: 'en',
       })
 
@@ -132,10 +132,10 @@ export async function POST(req: NextRequest) {
       }).catch(() => {})
     }
 
-    // Step 2: Structure with gpt-4o-mini
+    // Step 2: Structure with gpt-4o
     const systemPrompt = buildSystemPrompt(builderType, projectTitles)
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: transcript },
