@@ -38,12 +38,37 @@ function ProfileContent() {
   const [structureModel, setStructureModel] = useState('gpt-4o')
   const [savingModel, setSavingModel] = useState(false)
   const [modelSaved, setModelSaved] = useState(false)
+  const [smtp, setSmtp] = useState({
+    emailFromName: '', emailFromAddr: '', emailSmtpHost: '',
+    emailSmtpPort: '587', emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '',
+  })
+  const [smtpHasPassword, setSmtpHasPassword] = useState(false)
+  const [savingSmtp, setSavingSmtp] = useState(false)
+  const [smtpSaved, setSmtpSaved] = useState(false)
+  const [testingSmtp, setTestingSmtp] = useState(false)
+  const [smtpError, setSmtpError] = useState('')
+  const [smtpTestResult, setSmtpTestResult] = useState('')
 
-  // Load current model preference
+  // Load current model preference + SMTP settings
   useEffect(() => {
     fetch('/api/mobile/profile')
       .then(r => r.json())
       .then(d => { if (d.structureModel) setStructureModel(d.structureModel) })
+      .catch(() => {})
+    fetch('/api/email-settings')
+      .then(r => r.json())
+      .then(d => {
+        setSmtp({
+          emailFromName: d.emailFromName ?? '',
+          emailFromAddr: d.emailFromAddr ?? '',
+          emailSmtpHost: d.emailSmtpHost ?? '',
+          emailSmtpPort: String(d.emailSmtpPort ?? 587),
+          emailSmtpSecure: d.emailSmtpSecure ?? true,
+          emailSmtpUser: d.emailSmtpUser ?? '',
+          emailSmtpPass: '',
+        })
+        setSmtpHasPassword(d.hasPassword ?? false)
+      })
       .catch(() => {})
   }, [])
 
@@ -82,6 +107,56 @@ function ProfileContent() {
     } finally {
       setExportingData(false)
     }
+  }
+
+  const handleSaveSmtp = async () => {
+    setSavingSmtp(true)
+    setSmtpError('')
+    setSmtpSaved(false)
+    try {
+      const res = await fetch('/api/email-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...smtp, emailSmtpPort: Number(smtp.emailSmtpPort) }),
+      })
+      const d = await res.json()
+      if (!res.ok) { setSmtpError(d.error ?? 'Save failed.'); return }
+      if (smtp.emailSmtpPass) setSmtpHasPassword(true)
+      setSmtp(s => ({ ...s, emailSmtpPass: '' }))
+      setSmtpSaved(true)
+      setTimeout(() => setSmtpSaved(false), 3000)
+    } catch { setSmtpError('Network error.') }
+    finally { setSavingSmtp(false) }
+  }
+
+  const handleTestSmtp = async () => {
+    if (!smtp.emailSmtpHost || !smtp.emailSmtpUser || (!smtp.emailSmtpPass && !smtpHasPassword) || !smtp.emailFromAddr) {
+      setSmtpError('Fill in all SMTP fields (including password) before testing.')
+      return
+    }
+    setTestingSmtp(true)
+    setSmtpError('')
+    setSmtpTestResult('')
+    try {
+      const res = await fetch('/api/email-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: smtp.emailSmtpHost,
+          port: Number(smtp.emailSmtpPort),
+          secure: smtp.emailSmtpSecure,
+          user: smtp.emailSmtpUser,
+          pass: smtp.emailSmtpPass,
+          fromName: smtp.emailFromName,
+          fromEmail: smtp.emailFromAddr,
+          toEmail: smtp.emailFromAddr,
+        }),
+      })
+      const d = await res.json()
+      if (!res.ok) setSmtpError(d.error ?? 'Test failed.')
+      else setSmtpTestResult('Test email sent! Check your inbox.')
+    } catch { setSmtpError('Network error.') }
+    finally { setTestingSmtp(false) }
   }
 
   const handleSaveModel = async (model: string) => {
@@ -236,6 +311,71 @@ function ProfileContent() {
             ))}
           </div>
           {modelSaved && <p className="text-xs text-safety-green mt-3">Model preference saved.</p>}
+        </div>
+
+        {/* Email / SMTP Settings */}
+        <div className="card mt-6 space-y-4">
+          <div>
+            <h3 className="font-bold text-safety-yellow mb-1">EMAIL SETTINGS</h3>
+            <p className="text-xs text-gray-500">
+              Set up your own SMTP to send reports directly from your email address (Gmail, Office 365, any provider).
+              Leave blank to send via ProFieldHub (Reply-To will be set to your account email).
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            {[
+              { key: 'emailFromName', label: 'From Name', placeholder: 'John Smith', type: 'text' },
+              { key: 'emailFromAddr', label: 'From Email', placeholder: 'john@company.com', type: 'email' },
+              { key: 'emailSmtpHost', label: 'SMTP Host', placeholder: 'smtp.gmail.com', type: 'text' },
+              { key: 'emailSmtpPort', label: 'SMTP Port', placeholder: '587', type: 'number' },
+              { key: 'emailSmtpUser', label: 'SMTP Username', placeholder: 'john@company.com', type: 'email' },
+              { key: 'emailSmtpPass', label: smtpHasPassword ? 'App Password (leave blank to keep)' : 'App Password', placeholder: '••••••••••••', type: 'password' },
+            ].map(({ key, label, placeholder, type }) => (
+              <div key={key}>
+                <label className="text-xs text-gray-400 font-semibold block mb-1">{label.toUpperCase()}</label>
+                <input
+                  type={type}
+                  value={(smtp as any)[key]}
+                  onChange={e => setSmtp(s => ({ ...s, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  className="w-full bg-blueprint-paper border border-blueprint-grid rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-safety-yellow"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="smtpSecure"
+              checked={smtp.emailSmtpSecure}
+              onChange={e => setSmtp(s => ({ ...s, emailSmtpSecure: e.target.checked }))}
+              className="accent-safety-yellow"
+            />
+            <label htmlFor="smtpSecure" className="text-xs text-gray-400">Use TLS/SSL (port 465) — uncheck for STARTTLS (port 587)</label>
+          </div>
+
+          {smtpError && <p className="text-xs text-red-400">{smtpError}</p>}
+          {smtpSaved && <p className="text-xs text-safety-green">SMTP settings saved.</p>}
+          {smtpTestResult && <p className="text-xs text-safety-green">{smtpTestResult}</p>}
+
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={handleSaveSmtp}
+              disabled={savingSmtp}
+              className="btn-primary text-sm disabled:opacity-50"
+            >
+              {savingSmtp ? 'Saving...' : 'Save Settings'}
+            </button>
+            <button
+              onClick={handleTestSmtp}
+              disabled={testingSmtp}
+              className="btn-secondary text-sm disabled:opacity-50"
+            >
+              {testingSmtp ? 'Sending test...' : 'Send Test Email'}
+            </button>
+          </div>
         </div>
 
         <div className="card mt-6">

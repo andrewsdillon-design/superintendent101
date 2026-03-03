@@ -1,6 +1,8 @@
 import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import { prisma } from '@/lib/db'
 import { randomBytes } from 'crypto'
+import { decrypt } from './encrypt'
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
@@ -179,4 +181,107 @@ export async function sendPasswordResetEmail({ toEmail, resetUrl }: { toEmail: s
     subject: 'Reset your ProFieldHub password',
     html: emailWrapper({ body }),
   })
+}
+
+// ─── Report sending (Option A: user SMTP / Option C: Resend fallback) ────────
+
+export interface SmtpConfig {
+  host: string
+  port: number
+  secure: boolean
+  user: string
+  passEnc: string
+  fromName: string
+  fromEmail: string
+}
+
+export interface ReportEmailOptions {
+  to: string
+  subject: string
+  html: string
+  text?: string
+  attachments?: Array<{ filename: string; content: Buffer; contentType: string }>
+  replyTo?: string   // user's real email for Resend Reply-To
+}
+
+export async function sendReportEmail(opts: ReportEmailOptions, smtp?: SmtpConfig | null) {
+  if (smtp) {
+    const pass = decrypt(smtp.passEnc)
+    const transporter = nodemailer.createTransport({
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.secure,
+      auth: { user: smtp.user, pass },
+      tls: { rejectUnauthorized: false },
+    })
+    await transporter.sendMail({
+      from: `"${smtp.fromName}" <${smtp.fromEmail}>`,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+      attachments: opts.attachments?.map(a => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
+    })
+  } else {
+    if (!process.env.RESEND_API_KEY) throw new Error('Email not configured — add RESEND_API_KEY or set up SMTP in your profile.')
+    const from = process.env.RESEND_FROM_ADDRESS ?? 'reports@profieldhub.com'
+    const { error } = await getResend().emails.send({
+      from: `ProFieldHub <${from}>`,
+      to: opts.to,
+      reply_to: opts.replyTo,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+      attachments: opts.attachments?.map(a => ({
+        filename: a.filename,
+        content: a.content.toString('base64'),
+      })),
+    })
+    if (error) throw new Error(error.message)
+  }
+}
+
+export function buildDailyLogEmailHtml(params: {
+  logDate: string
+  projectName: string | null
+  userName: string
+  note?: string
+}): string {
+  const { logDate, projectName, userName, note } = params
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
+        <tr><td style="background:#0a0f1a;padding:24px 32px;">
+          <span style="font-size:22px;font-weight:800;color:#f97316;letter-spacing:2px;">PROFIELDHUB</span>
+          <p style="margin:4px 0 0;color:#6b7280;font-size:12px;letter-spacing:1px;">DAILY FIELD REPORT</p>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">Report from <strong style="color:#111827">${userName}</strong></p>
+          <h1 style="margin:0 0 4px;font-size:24px;font-weight:800;color:#111827;">${logDate}</h1>
+          ${projectName ? `<p style="margin:0 0 24px;font-size:14px;color:#f97316;font-weight:600;">${projectName}</p>` : '<p style="margin:0 0 24px;"></p>'}
+          ${note ? `<div style="background:#f9fafb;border-left:3px solid #f97316;padding:12px 16px;margin-bottom:24px;border-radius:0 4px 4px 0;">
+            <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">${note.replace(/\n/g, '<br>')}</p>
+          </div>` : ''}
+          <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">
+            The full daily field report is attached as a PDF. Open it to view crew counts, work performed, deliveries, inspections, and safety notes.
+          </p>
+        </td></tr>
+        <tr><td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;font-size:11px;color:#9ca3af;text-align:center;">
+            Sent via <a href="https://profieldhub.com" style="color:#f97316;text-decoration:none;">ProFieldHub</a> · Field reporting for superintendents
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
 }

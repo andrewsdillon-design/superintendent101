@@ -48,7 +48,14 @@ function DailyLogsContent() {
   const [projectFilter, setProjectFilter] = useState(projectIdParam ?? '')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [generatingSummary, setGeneratingSummary] = useState(false)
-  const [weeklyReport, setWeeklyReport] = useState<{ summary: string; label: string } | null>(null)
+  const [weeklyReport, setWeeklyReport] = useState<{ summary: string; label: string; weekStart: string; weekEnd: string; logCount: number } | null>(null)
+  const [downloadingWeeklyPdf, setDownloadingWeeklyPdf] = useState(false)
+  const [emailingLog, setEmailingLog] = useState<DailyLog | null>(null)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailNote, setEmailNote] = useState('')
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailError, setEmailError] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
 
   useEffect(() => {
     fetch('/api/projects')
@@ -78,11 +85,57 @@ function DailyLogsContent() {
       const res = await fetch('/api/daily-logs/weekly-summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
       if (!res.ok) throw new Error('Failed')
       const data = await res.json()
-      setWeeklyReport({ summary: data.summary, label: `${data.weekStart} – ${data.weekEnd} (${data.logCount} logs)` })
+      setWeeklyReport({ summary: data.summary, label: `${data.weekStart} – ${data.weekEnd} (${data.logCount} logs)`, weekStart: data.weekStart, weekEnd: data.weekEnd, logCount: data.logCount })
     } catch {
       alert('Could not generate weekly summary.')
     } finally {
       setGeneratingSummary(false)
+    }
+  }
+
+  const handleDownloadWeeklyPdf = async () => {
+    if (!weeklyReport) return
+    setDownloadingWeeklyPdf(true)
+    try {
+      const res = await fetch('/api/daily-logs/weekly-summary/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary: weeklyReport.summary, weekStart: weeklyReport.weekStart, weekEnd: weeklyReport.weekEnd, logCount: weeklyReport.logCount }),
+      })
+      if (!res.ok) { alert('Could not generate PDF.'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `weekly-report-${weeklyReport.weekStart}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Network error.')
+    } finally {
+      setDownloadingWeeklyPdf(false)
+    }
+  }
+
+  const handleEmailReport = async () => {
+    if (!emailingLog || !emailTo) return
+    setSendingEmail(true)
+    setEmailError('')
+    setEmailSent(false)
+    try {
+      const res = await fetch(`/api/daily-logs/${emailingLog.id}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: emailTo, note: emailNote }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setEmailError(data.error ?? 'Failed to send.'); return }
+      setEmailSent(true)
+      setTimeout(() => { setEmailingLog(null); setEmailTo(''); setEmailNote(''); setEmailSent(false) }, 2000)
+    } catch {
+      setEmailError('Network error.')
+    } finally {
+      setSendingEmail(false)
     }
   }
 
@@ -177,6 +230,13 @@ function DailyLogsContent() {
               <h2 className="text-sm font-bold text-safety-orange tracking-widest">WEEKLY FIELD REPORT</h2>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-500">{weeklyReport.label}</span>
+                <button
+                  onClick={handleDownloadWeeklyPdf}
+                  disabled={downloadingWeeklyPdf}
+                  className="text-xs text-neon-cyan hover:underline disabled:opacity-50 whitespace-nowrap"
+                >
+                  {downloadingWeeklyPdf ? 'Generating...' : 'Download PDF'}
+                </button>
                 <button onClick={() => setWeeklyReport(null)} className="text-xs text-gray-500 hover:text-white">✕</button>
               </div>
             </div>
@@ -285,11 +345,17 @@ function DailyLogsContent() {
                             Edit
                           </Link>
                           <button
+                            onClick={() => { setEmailingLog(log); setEmailTo(''); setEmailNote(''); setEmailError(''); setEmailSent(false) }}
+                            className="text-xs text-safety-yellow hover:underline whitespace-nowrap"
+                          >
+                            Email
+                          </button>
+                          <button
                             onClick={() => handleDownloadPdf(log)}
                             disabled={downloadingId === log.id}
                             className="text-xs text-neon-cyan hover:underline disabled:opacity-50 whitespace-nowrap"
                           >
-                            {downloadingId === log.id ? 'Generating...' : 'Download PDF'}
+                            {downloadingId === log.id ? 'Generating...' : 'PDF'}
                           </button>
                         </div>
                       </td>
@@ -324,6 +390,12 @@ function DailyLogsContent() {
                         Edit
                       </Link>
                       <button
+                        onClick={() => { setEmailingLog(log); setEmailTo(''); setEmailNote(''); setEmailError(''); setEmailSent(false) }}
+                        className="text-xs text-safety-yellow hover:underline"
+                      >
+                        Email
+                      </button>
+                      <button
                         onClick={() => handleDownloadPdf(log)}
                         disabled={downloadingId === log.id}
                         className="text-xs text-neon-cyan hover:underline disabled:opacity-50"
@@ -339,6 +411,68 @@ function DailyLogsContent() {
         )}
       </main>
       <MobileNav />
+
+      {/* ── Email Report Modal ── */}
+      {emailingLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="bg-blueprint-bg border border-blueprint-grid rounded-lg w-full max-w-md p-6 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="font-bold text-white text-lg">Email Report</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {formatDate(emailingLog.date)}{emailingLog.project?.title ? ` · ${emailingLog.project.title}` : ''}
+                </p>
+              </div>
+              <button onClick={() => setEmailingLog(null)} className="text-gray-500 hover:text-white text-xl leading-none">✕</button>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-400 font-semibold block mb-1">TO *</label>
+              <input
+                type="email"
+                value={emailTo}
+                onChange={e => setEmailTo(e.target.value)}
+                placeholder="recipient@company.com"
+                className="w-full bg-blueprint-paper border border-blueprint-grid rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-neon-cyan"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-400 font-semibold block mb-1">NOTE (OPTIONAL)</label>
+              <textarea
+                value={emailNote}
+                onChange={e => setEmailNote(e.target.value)}
+                placeholder="Add a personal note to include above the report..."
+                rows={3}
+                className="w-full bg-blueprint-paper border border-blueprint-grid rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-neon-cyan resize-none"
+              />
+            </div>
+
+            <p className="text-xs text-gray-500">
+              PDF attached automatically. {user?.email ? `Reply-To set to ${user.email}.` : ''}
+            </p>
+
+            {emailError && <p className="text-xs text-red-400">{emailError}</p>}
+            {emailSent && <p className="text-xs text-safety-green">Report sent!</p>}
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setEmailingLog(null)}
+                className="text-sm text-gray-400 hover:text-white px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEmailReport}
+                disabled={sendingEmail || !emailTo || emailSent}
+                className="btn-primary text-sm disabled:opacity-50"
+              >
+                {sendingEmail ? 'Sending...' : 'Send Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
