@@ -3,7 +3,9 @@ const path = require('path')
 /** @type {import('next').NextConfig} */
 module.exports = {
   reactStrictMode: true,
-  serverExternalPackages: ['@react-pdf/renderer'],
+  experimental: {
+    serverComponentsExternalPackages: ['@react-pdf/renderer'],
+  },
   compress: true,
   poweredByHeader: false,
   images: {
