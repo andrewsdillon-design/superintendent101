@@ -33,9 +33,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (!log) return NextResponse.json({ error: 'Log not found' }, { status: 404 })
 
-  // Build PDF
+  // Build PDF — convert relative photo URLs to absolute for renderer
+  const origin = new URL(req.url).origin
+  const absolutePhotoUrls = (log.photoUrls as string[]).map(url =>
+    url.startsWith('http') ? url : `${origin}${url}`
+  )
   const uint8 = await renderDailyLogPdf({
     ...log,
+    photoUrls: absolutePhotoUrls,
     crewCounts: log.crewCounts as Record<string, number>,
   })
   const pdfBuffer = Buffer.from(uint8)

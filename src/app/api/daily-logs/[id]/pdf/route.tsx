@@ -17,8 +17,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   if (!log) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Convert relative photo URLs to absolute so @react-pdf/renderer can fetch them
+  const origin = new URL(req.url).origin
+  const absolutePhotoUrls = (log.photoUrls as string[]).map(url =>
+    url.startsWith('http') ? url : `${origin}${url}`
+  )
+
   const uint8 = await renderDailyLogPdf({
     ...log,
+    photoUrls: absolutePhotoUrls,
     crewCounts: log.crewCounts as Record<string, number>,
   })
 

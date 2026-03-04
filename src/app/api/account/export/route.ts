@@ -93,14 +93,19 @@ export async function GET(req: NextRequest) {
   const logsForPdf = logs.slice(0, 365)
 
   // Generate PDFs concurrently in batches of 5 to avoid memory spikes
+  const origin = new URL(req.url).origin
   const BATCH = 5
   for (let i = 0; i < logsForPdf.length; i += BATCH) {
     const batch = logsForPdf.slice(i, i + BATCH)
     await Promise.all(
       batch.map(async (log) => {
         try {
+          const absolutePhotoUrls = (log.photoUrls as string[]).map(url =>
+            url.startsWith('http') ? url : `${origin}${url}`
+          )
           const pdf = await renderDailyLogPdf({
             ...log,
+            photoUrls: absolutePhotoUrls,
             crewCounts: log.crewCounts as Record<string, number>,
           })
           const dateStr = log.date.toISOString().split('T')[0]
