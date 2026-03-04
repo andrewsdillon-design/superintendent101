@@ -128,7 +128,7 @@ function parseSummaryToElements(summary: string): React.ReactElement[] {
   return elements
 }
 
-export async function renderWeeklyReportPdf(input: WeeklyReportPdfInput): Promise<Buffer> {
+export async function renderWeeklyReportPdf(input: WeeklyReportPdfInput): Promise<Uint8Array> {
   const { summary, weekStart, weekEnd, logCount } = input
 
   const dateRange = weekStart && weekEnd
@@ -188,6 +188,5 @@ export async function renderWeeklyReportPdf(input: WeeklyReportPdfInput): Promis
     )
   )
 
-  const uint8 = await renderToBuffer(doc)
-  return Buffer.from(uint8)
+  return await renderToBuffer(doc)
 }
