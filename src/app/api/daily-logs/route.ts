@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const where = {
     userId,
     archived: showArchived ? true : false,
-    ...(projectId ? { projectId } : {}),
+    ...(projectId === 'none' ? { projectId: null } : projectId ? { projectId } : {}),
   }
 
   const logs = await prisma.dailyLog.findMany({
@@ -62,11 +62,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'date is required' }, { status: 400 })
   }
 
-  // Verify project belongs to user if provided
+  // Verify project belongs to user if provided; fetch location for auto lot#
+  let projectLocation: string | null = null
   if (projectId) {
-    const project = await prisma.project.findFirst({ where: { id: projectId, userId } })
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId },
+      select: { location: true },
+    })
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    projectLocation = project.location
   }
+
+  // Auto-populate permitNumber from project.location (lot#) when not explicitly provided
+  const effectivePermitNumber = permitNumber?.trim() || projectLocation || null
 
   // Helper: append text with separator, skipping empty values
   function appendText(current: string, incoming: string | undefined | null): string {
@@ -96,7 +104,7 @@ export async function POST(req: NextRequest) {
           rfi: appendText(existing.rfi, rfi),
           photoUrls: [...((existing.photoUrls as string[]) ?? []), ...(photoUrls ?? [])],
           address: address?.trim() ? address : existing.address,
-          permitNumber: permitNumber?.trim() ? permitNumber : existing.permitNumber,
+          permitNumber: effectivePermitNumber || existing.permitNumber,
           transcript: transcript?.trim()
             ? appendText(existing.transcript ?? '', transcript)
             : existing.transcript,
@@ -124,7 +132,7 @@ export async function POST(req: NextRequest) {
       signatureUrl: signatureUrl ?? null,
       transcript: transcript ?? null,
       address: address ?? null,
-      permitNumber: permitNumber ?? null,
+      permitNumber: effectivePermitNumber,
       rfi: rfi ?? '',
     },
     include: {

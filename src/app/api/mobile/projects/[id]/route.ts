@@ -16,6 +16,20 @@ const PROJECT_SELECT = {
   electricalSide: true,
 } as const
 
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const userId = await getUserId(req)
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const project = await prisma.project.findFirst({ where: { id: params.id, userId } })
+  if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Unlink all logs from this project before deleting
+  await prisma.dailyLog.updateMany({ where: { projectId: params.id }, data: { projectId: null } })
+  await prisma.project.delete({ where: { id: params.id } })
+
+  return NextResponse.json({ success: true })
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -24,6 +24,11 @@ function getStructureClient(model: string): OpenAI | null {
   return openai
 }
 
+// Reasoning models don't support response_format or temperature
+function isReasoningModel(model: string): boolean {
+  return model.includes('reasoning') || model.startsWith('o1') || model.startsWith('o3')
+}
+
 function estimateTranscribeCost(bytes: number): number {
   // whisper-1: $0.006/min — estimate from file size at ~128kbps
   const minutes = bytes / (128 * 1024 / 8) / 60
@@ -35,8 +40,15 @@ function estimateStructureCost(model: string, inputTokens: number, outputTokens:
   return (inputTokens / 1_000_000) * pricing.inputPerM + (outputTokens / 1_000_000) * pricing.outputPerM
 }
 
-function buildSystemPrompt(builderType: string, projectTitles: string[]): string {
-  const projectsStr = projectTitles.length > 0 ? projectTitles.join(', ') : 'none listed'
+function buildSystemPrompt(
+  builderType: string,
+  projects: Array<{ id: string; title: string; location?: string | null }>
+): string {
+  const projectsStr = projects.length > 0
+    ? projects.map(p => p.location ? `"${p.location} (${p.title})"` : `"${p.title}"`).join(', ')
+    : 'none listed'
+
+  const isResidential = (builderType || '').toUpperCase() === 'RESIDENTIAL'
 
   return `You are a construction field assistant. Given a voice transcript from a superintendent's daily field report, extract structured log data.
 
@@ -44,20 +56,21 @@ Builder type: ${builderType || 'COMMERCIAL'}
 Active projects: ${projectsStr}
 
 If the transcript clearly covers MULTIPLE lots/projects, return:
-{ "multi": true, "logs": [{ "projectHint": "Lot 5", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }, ...] }
+{ "multi": true, "logs": [{ "projectHint": "Lot 5", "lotNumber": "Lot 5", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }, ...] }
 
 If the transcript covers ONE lot/project, return:
-{ "multi": false, "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }
+{ "multi": false, "lotNumber": "...", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }
 
 Rules:
 - If something was not mentioned, use an empty string "" or {} for crewCounts.
 - For crewCounts, use clean trade names as keys: "Framers", "Electricians", "Plumbers", etc.
 - address: job site street address if mentioned, otherwise "".
 - permitNumber: building permit number if mentioned, otherwise "".
+- lotNumber: the lot number or identifier (e.g. "Lot 5", "5", "22") — match against the active projects list by location field. Use "" if not identifiable.
 - rfi: any RFIs (Requests for Information) mentioned, otherwise "".
 - Be concise but complete. Do not invent details not mentioned.
 - Only use multi=true when the transcript clearly discusses multiple separate lots/addresses/projects.
-- Return raw JSON only, no markdown fences.`
+${isResidential ? '- RESIDENTIAL: You MUST include "issues" for every lot — if none mentioned, write "None reported". Never leave issues blank.\n' : ''}- Return raw JSON only, no markdown fences.`
 }
 
 const ALLOWED_TYPES: Record<string, string> = {
@@ -112,10 +125,9 @@ export async function POST(req: NextRequest) {
   const builderType = (formData.get('builderType') as string | null) ?? ''
   const projectsRaw = (formData.get('projects') as string | null) ?? '[]'
 
-  let projectTitles: string[] = []
+  let projects: Array<{ id: string; title: string; location?: string | null }> = []
   try {
-    const parsed = JSON.parse(projectsRaw) as Array<{ id: string; title: string }>
-    projectTitles = parsed.map((p) => p.title)
+    projects = JSON.parse(projectsRaw) as Array<{ id: string; title: string; location?: string | null }>
   } catch {}
 
   if (!audioFile && !pastedTranscript?.trim()) {
@@ -164,15 +176,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 2: Structure with user's chosen model
-    const systemPrompt = buildSystemPrompt(builderType, projectTitles)
+    const systemPrompt = buildSystemPrompt(builderType, projects)
+    const reasoning = isReasoningModel(structureModel)
     const completion = await structureClient.chat.completions.create({
       model: structureModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: transcript },
       ],
-      response_format: { type: 'json_object' },
-      temperature: 0.1,
+      ...(reasoning ? {} : { response_format: { type: 'json_object' }, temperature: 0.1 }),
     })
 
     const inputTokens = completion.usage?.prompt_tokens ?? 0

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
 
-const ALLOWED_MODELS = ['gpt-4o', 'grok-4.1-reasoning']
+const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'grok-4.1-reasoning']
 
 // GET /api/mobile/profile
 export async function GET(req: NextRequest) {
