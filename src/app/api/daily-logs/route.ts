@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ logs, total })
 }
 
-// POST /api/daily-logs — create a new daily log
+// POST /api/daily-logs — create or upsert a daily log (one per user+project+date)
 export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -66,6 +66,46 @@ export async function POST(req: NextRequest) {
   if (projectId) {
     const project = await prisma.project.findFirst({ where: { id: projectId, userId } })
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
+  // Helper: append text with separator, skipping empty values
+  function appendText(current: string, incoming: string | undefined | null): string {
+    const inc = incoming?.trim() ?? ''
+    if (!inc) return current ?? ''
+    const cur = current?.trim() ?? ''
+    if (!cur) return inc
+    return `${cur}\n\n--- Update ---\n\n${inc}`
+  }
+
+  // Upsert: if a log already exists for this user+project+date, merge it
+  if (projectId) {
+    const existing = await prisma.dailyLog.findFirst({
+      where: { userId, projectId, date: new Date(date) },
+    })
+    if (existing) {
+      const updated = await prisma.dailyLog.update({
+        where: { id: existing.id },
+        data: {
+          weather: weather?.trim() ? weather : existing.weather,
+          crewCounts: crewCounts && Object.keys(crewCounts).length > 0 ? crewCounts : existing.crewCounts,
+          workPerformed: appendText(existing.workPerformed, workPerformed),
+          deliveries: appendText(existing.deliveries, deliveries),
+          inspections: appendText(existing.inspections, inspections),
+          issues: appendText(existing.issues, issues),
+          safetyNotes: appendText(existing.safetyNotes, safetyNotes),
+          rfi: appendText(existing.rfi, rfi),
+          photoUrls: [...((existing.photoUrls as string[]) ?? []), ...(photoUrls ?? [])],
+          address: address?.trim() ? address : existing.address,
+          permitNumber: permitNumber?.trim() ? permitNumber : existing.permitNumber,
+          transcript: transcript?.trim()
+            ? appendText(existing.transcript ?? '', transcript)
+            : existing.transcript,
+          ...(signatureUrl ? { signatureUrl } : {}),
+        },
+        include: { project: { select: { id: true, title: true } } },
+      })
+      return NextResponse.json({ log: updated })
+    }
   }
 
   const log = await prisma.dailyLog.create({

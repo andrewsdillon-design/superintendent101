@@ -54,30 +54,65 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const created = await prisma.$transaction(
-    logs.map((log) =>
-      prisma.dailyLog.create({
-        data: {
-          userId,
-          projectId: log.projectId ?? null,
-          date: new Date(log.date),
-          weather: log.weather ?? '',
-          crewCounts: log.crewCounts ?? {},
-          workPerformed: log.workPerformed ?? '',
-          deliveries: log.deliveries ?? '',
-          inspections: log.inspections ?? '',
-          issues: log.issues ?? '',
-          safetyNotes: log.safetyNotes ?? '',
-          address: log.address ?? null,
-          permitNumber: log.permitNumber ?? null,
-          rfi: log.rfi ?? '',
-        },
-        include: {
-          project: { select: { id: true, title: true } },
-        },
-      })
-    )
-  )
+  function appendText(current: string, incoming: string | undefined | null): string {
+    const inc = incoming?.trim() ?? ''
+    if (!inc) return current ?? ''
+    const cur = current?.trim() ?? ''
+    if (!cur) return inc
+    return `${cur}\n\n--- Update ---\n\n${inc}`
+  }
 
-  return NextResponse.json({ logs: created }, { status: 201 })
+  const results = await prisma.$transaction(async (tx) => {
+    const out = []
+    for (const log of logs) {
+      const existing = log.projectId
+        ? await tx.dailyLog.findFirst({
+            where: { userId, projectId: log.projectId, date: new Date(log.date) },
+          })
+        : null
+
+      if (existing) {
+        const updated = await tx.dailyLog.update({
+          where: { id: existing.id },
+          data: {
+            weather: log.weather?.trim() ? log.weather : existing.weather,
+            crewCounts: log.crewCounts && Object.keys(log.crewCounts).length > 0 ? log.crewCounts : existing.crewCounts,
+            workPerformed: appendText(existing.workPerformed, log.workPerformed),
+            deliveries: appendText(existing.deliveries, log.deliveries),
+            inspections: appendText(existing.inspections, log.inspections),
+            issues: appendText(existing.issues, log.issues),
+            safetyNotes: appendText(existing.safetyNotes, log.safetyNotes),
+            rfi: appendText(existing.rfi, log.rfi),
+            address: log.address?.trim() ? log.address : existing.address,
+            permitNumber: log.permitNumber?.trim() ? log.permitNumber : existing.permitNumber,
+          },
+          include: { project: { select: { id: true, title: true } } },
+        })
+        out.push(updated)
+      } else {
+        const created = await tx.dailyLog.create({
+          data: {
+            userId,
+            projectId: log.projectId ?? null,
+            date: new Date(log.date),
+            weather: log.weather ?? '',
+            crewCounts: log.crewCounts ?? {},
+            workPerformed: log.workPerformed ?? '',
+            deliveries: log.deliveries ?? '',
+            inspections: log.inspections ?? '',
+            issues: log.issues ?? '',
+            safetyNotes: log.safetyNotes ?? '',
+            address: log.address ?? null,
+            permitNumber: log.permitNumber ?? null,
+            rfi: log.rfi ?? '',
+          },
+          include: { project: { select: { id: true, title: true } } },
+        })
+        out.push(created)
+      }
+    }
+    return out
+  })
+
+  return NextResponse.json({ logs: results }, { status: 201 })
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 type Weather = 'Clear' | 'Partly Cloudy' | 'Rain' | 'Storm' | 'Fog' | 'Snow' | 'Windy'
 
@@ -62,6 +63,10 @@ function NewDailyLogForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const projectIdParam = searchParams.get('projectId') ?? ''
+  const { data: session } = useSession()
+  const builderType = (session?.user as any)?.builderType ?? null
+  const isResidential = builderType === 'RESIDENTIAL'
+  const isCommercial = builderType === 'COMMERCIAL'
 
   // Projects
   const [projects, setProjects] = useState<Project[]>([])
@@ -679,30 +684,6 @@ function NewDailyLogForm() {
             )}
           </div>
 
-          {/* Address + Permit */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Job Site Address</label>
-              <input
-                type="text"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                placeholder="123 Main St..."
-                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Permit #</label>
-              <input
-                type="text"
-                value={permitNumber}
-                onChange={e => setPermitNumber(e.target.value)}
-                placeholder="Optional..."
-                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
-              />
-            </div>
-          </div>
-
           {/* Date */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Date</label>
@@ -714,6 +695,48 @@ function NewDailyLogForm() {
               className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
             />
           </div>
+
+          {/* Address */}
+          <div>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Job Site Address</label>
+            <input
+              type="text"
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="123 Main St..."
+              className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+            />
+          </div>
+
+          {/* Permit # — residential label is "Lot # / Permit #" */}
+          <div>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">
+              {isResidential ? 'Lot # / Permit #' : 'Permit #'}
+            </label>
+            <input
+              type="text"
+              value={permitNumber}
+              onChange={e => setPermitNumber(e.target.value)}
+              placeholder={isResidential ? 'Lot number or permit # (optional)...' : 'Optional...'}
+              className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+            />
+          </div>
+
+          {/* Residential: plan set / elevation / electrical side from selected project */}
+          {isResidential && selectedProject && (selectedProject.planNumber || selectedProject.elevation || selectedProject.electricalSide) && (
+            <div className="p-3 bg-blueprint-paper/10 border border-blue-900/40 text-xs space-y-1">
+              <p className="text-blue-400 font-bold uppercase tracking-widest text-[10px] mb-2">Project Details</p>
+              {selectedProject.planNumber && (
+                <p className="text-gray-400">Plan Set: <span className="text-blue-300 font-semibold">{selectedProject.planNumber}</span></p>
+              )}
+              {selectedProject.elevation && (
+                <p className="text-gray-400">Elevation: <span className="text-blue-300 font-semibold">{selectedProject.elevation}</span></p>
+              )}
+              {selectedProject.electricalSide && (
+                <p className="text-gray-400">Electrical Side: <span className="text-blue-300 font-semibold">{selectedProject.electricalSide}</span></p>
+              )}
+            </div>
+          )}
 
           {/* Weather Chips */}
           <div>
@@ -798,6 +821,21 @@ function NewDailyLogForm() {
             />
           </div>
 
+          {/* RFIs — commercial: shown prominently before inspections; residential: hidden */}
+          {!isResidential && (
+            <div className={isCommercial ? 'border border-neon-cyan/20 p-3 -mx-3' : ''}>
+              {isCommercial && <p className="text-[10px] text-neon-cyan font-bold uppercase tracking-widest mb-2">RFIs</p>}
+              {!isCommercial && <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">RFIs</label>}
+              <textarea
+                value={rfi}
+                onChange={e => setRfi(e.target.value)}
+                rows={2}
+                placeholder="Requests for Information submitted or received..."
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-safety-orange resize-none text-sm"
+              />
+            </div>
+          )}
+
           {/* Inspections */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Inspections</label>
@@ -818,18 +856,6 @@ function NewDailyLogForm() {
               onChange={e => setIssues(e.target.value)}
               rows={3}
               placeholder="Problems, delays, concerns..."
-              className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-safety-orange resize-none text-sm"
-            />
-          </div>
-
-          {/* RFIs */}
-          <div>
-            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">RFIs</label>
-            <textarea
-              value={rfi}
-              onChange={e => setRfi(e.target.value)}
-              rows={2}
-              placeholder="Requests for Information submitted or received..."
               className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-safety-orange resize-none text-sm"
             />
           </div>
