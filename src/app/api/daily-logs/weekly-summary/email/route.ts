@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  const pdfBuffer = await renderWeeklyReportPdf({ summary, weekStart, weekEnd, logCount })
+  const pdfBuffer = Buffer.from(await renderWeeklyReportPdf({ summary, weekStart, weekEnd, logCount }))
   const filename = `weekly-report-${weekStart ?? 'report'}.pdf`
 
   const dateRange = weekStart && weekEnd
