@@ -33,6 +33,8 @@ function ProfileContent() {
   const role = user?.role || 'MEMBER'
   const subscription = user?.subscription || 'FREE'
 
+  const [builderType, setBuilderType] = useState<string | null>(null)
+  const [savingBuilderType, setSavingBuilderType] = useState(false)
   const [managingBilling, setManagingBilling] = useState(false)
   const [exportingData, setExportingData] = useState(false)
   const [structureModel, setStructureModel] = useState('gpt-4o')
@@ -53,7 +55,10 @@ function ProfileContent() {
   useEffect(() => {
     fetch('/api/mobile/profile')
       .then(r => r.json())
-      .then(d => { if (d.structureModel) setStructureModel(d.structureModel) })
+      .then(d => {
+        if (d.structureModel) setStructureModel(d.structureModel)
+        if (d.builderType) setBuilderType(d.builderType)
+      })
       .catch(() => {})
     fetch('/api/email-settings')
       .then(r => r.json())
@@ -157,6 +162,23 @@ function ProfileContent() {
       else setSmtpTestResult('Test email sent! Check your inbox.')
     } catch { setSmtpError('Network error.') }
     finally { setTestingSmtp(false) }
+  }
+
+  const handleSetBuilderType = async (type: 'RESIDENTIAL' | 'COMMERCIAL') => {
+    if (savingBuilderType || builderType === type) return
+    setSavingBuilderType(true)
+    try {
+      await fetch('/api/mobile/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ builderType: type }),
+      })
+      setBuilderType(type)
+    } catch {
+      alert('Failed to save builder type.')
+    } finally {
+      setSavingBuilderType(false)
+    }
   }
 
   const handleSaveModel = async (model: string) => {
@@ -277,6 +299,31 @@ function ProfileContent() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Builder Type */}
+        <div className="card mt-6">
+          <h3 className="font-bold text-safety-orange mb-1">BUILDER TYPE</h3>
+          <p className="text-xs text-gray-500 mb-4">Controls your daily log form layout — residential shows lot number, plan set, elevation; commercial shows RFIs prominently.</p>
+          <div className="flex gap-3">
+            {(['RESIDENTIAL', 'COMMERCIAL'] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => handleSetBuilderType(type)}
+                disabled={savingBuilderType}
+                className={`flex-1 py-3 text-sm font-bold border transition-colors disabled:opacity-50 ${
+                  builderType === type
+                    ? 'border-safety-orange bg-safety-orange text-blueprint-bg'
+                    : 'border-blueprint-grid text-gray-400 hover:border-gray-400'
+                }`}
+              >
+                {type === 'RESIDENTIAL' ? 'Residential' : 'Commercial'}
+              </button>
+            ))}
+          </div>
+          {!builderType && (
+            <p className="text-xs text-gray-600 mt-2">Not set — select your builder type to customize your log form.</p>
+          )}
         </div>
 
         {/* AI Model Settings */}

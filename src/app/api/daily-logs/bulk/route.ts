@@ -13,6 +13,7 @@ interface BulkLogInput {
   issues?: string
   safetyNotes?: string
   address?: string
+  lotNumber?: string
   permitNumber?: string
   rfi?: string
 }
@@ -59,7 +60,8 @@ export async function POST(req: NextRequest) {
     if (!inc) return current ?? ''
     const cur = current?.trim() ?? ''
     if (!cur) return inc
-    return `${cur}\n\n--- Update ---\n\n${inc}`
+    const ts = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+    return `${cur}\n\n--- Update [${ts}] ---\n\n${inc}`
   }
 
   const results = await prisma.$transaction(async (tx) => {
@@ -84,6 +86,7 @@ export async function POST(req: NextRequest) {
             safetyNotes: appendText(existing.safetyNotes, log.safetyNotes),
             rfi: appendText(existing.rfi, log.rfi),
             address: log.address?.trim() ? log.address : existing.address,
+            lotNumber: log.lotNumber?.trim() ? log.lotNumber : existing.lotNumber,
             permitNumber: log.permitNumber?.trim() ? log.permitNumber : existing.permitNumber,
           },
           include: { project: { select: { id: true, title: true } } },
@@ -103,6 +106,7 @@ export async function POST(req: NextRequest) {
             issues: log.issues ?? '',
             safetyNotes: log.safetyNotes ?? '',
             address: log.address ?? null,
+            lotNumber: log.lotNumber ?? null,
             permitNumber: log.permitNumber ?? null,
             rfi: log.rfi ?? '',
           },

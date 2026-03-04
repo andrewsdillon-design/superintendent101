@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     signatureUrl,
     transcript,
     address,
+    lotNumber,
     permitNumber,
     rfi,
   } = body
@@ -76,13 +77,14 @@ export async function POST(req: NextRequest) {
   // Auto-populate permitNumber from project.location (lot#) when not explicitly provided
   const effectivePermitNumber = permitNumber?.trim() || projectLocation || null
 
-  // Helper: append text with separator, skipping empty values
+  // Helper: append text with timestamp separator, skipping empty values
   function appendText(current: string, incoming: string | undefined | null): string {
     const inc = incoming?.trim() ?? ''
     if (!inc) return current ?? ''
     const cur = current?.trim() ?? ''
     if (!cur) return inc
-    return `${cur}\n\n--- Update ---\n\n${inc}`
+    const ts = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+    return `${cur}\n\n--- Update [${ts}] ---\n\n${inc}`
   }
 
   // Upsert: if a log already exists for this user+project+date, merge it
@@ -104,6 +106,7 @@ export async function POST(req: NextRequest) {
           rfi: appendText(existing.rfi, rfi),
           photoUrls: [...((existing.photoUrls as string[]) ?? []), ...(photoUrls ?? [])],
           address: address?.trim() ? address : existing.address,
+          lotNumber: lotNumber?.trim() ? lotNumber : existing.lotNumber,
           permitNumber: effectivePermitNumber || existing.permitNumber,
           transcript: transcript?.trim()
             ? appendText(existing.transcript ?? '', transcript)
@@ -132,6 +135,7 @@ export async function POST(req: NextRequest) {
       signatureUrl: signatureUrl ?? null,
       transcript: transcript ?? null,
       address: address ?? null,
+      lotNumber: lotNumber ?? null,
       permitNumber: effectivePermitNumber,
       rfi: rfi ?? '',
     },

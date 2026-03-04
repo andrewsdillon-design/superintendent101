@@ -86,6 +86,7 @@ function NewDailyLogForm() {
   const [rfi, setRfi] = useState('')
   const [safetyNotes, setSafetyNotes] = useState('')
   const [address, setAddress] = useState('')
+  const [lotNumber, setLotNumber] = useState('')
   const [permitNumber, setPermitNumber] = useState('')
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
 
@@ -241,6 +242,7 @@ function NewDailyLogForm() {
     if (s.issues) setIssues(s.issues)
     if (s.safetyNotes) setSafetyNotes(s.safetyNotes)
     if (s.address) setAddress(s.address)
+    if (s.lotNumber) setLotNumber(s.lotNumber)
     if (s.permitNumber) setPermitNumber(s.permitNumber)
     if (s.rfi) setRfi(s.rfi)
     if (s.crewCounts && typeof s.crewCounts === 'object') {
@@ -392,6 +394,7 @@ function NewDailyLogForm() {
           rfi,
           safetyNotes,
           address: address || null,
+          lotNumber: isResidential ? (lotNumber || null) : null,
           permitNumber: permitNumber || null,
           photoUrls,
           transcript: transcript || null,
@@ -696,6 +699,20 @@ function NewDailyLogForm() {
             />
           </div>
 
+          {/* Lot # — residential only */}
+          {isResidential && (
+            <div>
+              <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Lot #</label>
+              <input
+                type="text"
+                value={lotNumber}
+                onChange={e => setLotNumber(e.target.value)}
+                placeholder="Lot number..."
+                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+              />
+            </div>
+          )}
+
           {/* Address */}
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Job Site Address</label>
@@ -708,16 +725,14 @@ function NewDailyLogForm() {
             />
           </div>
 
-          {/* Permit # — residential label is "Lot # / Permit #" */}
+          {/* Permit # */}
           <div>
-            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">
-              {isResidential ? 'Lot # / Permit #' : 'Permit #'}
-            </label>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Permit #</label>
             <input
               type="text"
               value={permitNumber}
               onChange={e => setPermitNumber(e.target.value)}
-              placeholder={isResidential ? 'Lot number or permit # (optional)...' : 'Optional...'}
+              placeholder="Optional..."
               className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
             />
           </div>

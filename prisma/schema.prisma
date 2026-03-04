@@ -275,6 +275,7 @@ model DailyLog {
   transcript    String?  @db.Text        // raw voice transcript for reference
   archived      Boolean  @default(false)
   address       String?                  // job site address for this log
+  lotNumber     String?                  // residential lot number
   permitNumber  String?                  // permit number for this log
   rfi           String   @default("") @db.Text  // RFIs logged this day
   createdAt     DateTime @default(now())
