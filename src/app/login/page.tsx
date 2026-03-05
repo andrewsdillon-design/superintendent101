@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, Suspense } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 function LoginForm() {
@@ -32,7 +32,16 @@ function LoginForm() {
     if (result?.error) {
       setError('Invalid email or password')
     } else {
-      router.push('/dashboard')
+      const session = await getSession()
+      const onboarded = (session?.user as any)?.onboarded
+      const callbackUrl = searchParams.get('callbackUrl')
+      if (!onboarded) {
+        router.push('/onboarding')
+      } else if (callbackUrl) {
+        router.push(callbackUrl)
+      } else {
+        router.push('/daily-logs/new')
+      }
       router.refresh()
     }
   }

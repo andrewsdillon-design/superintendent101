@@ -39,6 +39,8 @@ model User {
   procoreTokenExpiry  DateTime?
   procoreCompanyId    Int?
   betaTester      Boolean      @default(false)   // free for life — Stripe webhook skips these
+  onboarded       Boolean      @default(false)
+  defaultProjectId String?
   builderType     String?      // 'RESIDENTIAL' | 'COMMERCIAL'
   structureModel  String       @default("gpt-4o")  // AI model for structuring transcripts
   // Email sending (Option A — user's own SMTP)

@@ -83,6 +83,8 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           subscription: user.subscription,
           builderType: user.builderType ?? null,
+          onboarded: user.onboarded,
+          defaultProjectId: user.defaultProjectId ?? null,
           companyId: membership?.companyId ?? null,
           companyName: membership?.company.name ?? null,
           companyLogoUrl: membership?.company.logoUrl ?? null,
@@ -100,6 +102,8 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role
         token.subscription = (user as any).subscription
         token.builderType = (user as any).builderType ?? null
+        token.onboarded = (user as any).onboarded ?? false
+        token.defaultProjectId = (user as any).defaultProjectId ?? null
         token.companyId = (user as any).companyId ?? null
         token.companyName = (user as any).companyName ?? null
         token.companyLogoUrl = (user as any).companyLogoUrl ?? null
@@ -115,6 +119,8 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).role = token.role
         ;(session.user as any).subscription = token.subscription
         ;(session.user as any).builderType = token.builderType ?? null
+        ;(session.user as any).onboarded = token.onboarded ?? false
+        ;(session.user as any).defaultProjectId = token.defaultProjectId ?? null
         ;(session.user as any).companyId = token.companyId ?? null
         ;(session.user as any).companyName = token.companyName ?? null
         ;(session.user as any).companyLogoUrl = token.companyLogoUrl ?? null

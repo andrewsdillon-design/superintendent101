@@ -44,6 +44,49 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
+  // Weekly report state
+  const [weeklyReportProjectId, setWeeklyReportProjectId] = useState<string | null>(null)
+  const [weeklyReportWeek, setWeeklyReportWeek] = useState(() => {
+    const now = new Date()
+    const day = now.getDay()
+    const daysBack = day === 0 ? 6 : day - 1
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - daysBack)
+    return monday.toISOString().split('T')[0]
+  })
+  const [generatingReport, setGeneratingReport] = useState(false)
+  const [weeklyReport, setWeeklyReport] = useState<{ summary: string; weekStart: string; weekEnd: string; logCount: number } | null>(null)
+  const [reportError, setReportError] = useState('')
+
+  function openWeeklyReport(projectId: string) {
+    setWeeklyReportProjectId(projectId)
+    setWeeklyReport(null)
+    setReportError('')
+  }
+
+  async function generateWeeklyReport() {
+    if (!weeklyReportProjectId) return
+    setGeneratingReport(true)
+    setReportError('')
+    try {
+      const res = await fetch('/api/daily-logs/weekly-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekStart: weeklyReportWeek, projectId: weeklyReportProjectId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setReportError(data.error ?? 'Failed to generate report.')
+      } else {
+        setWeeklyReport(data)
+      }
+    } catch {
+      setReportError('Network error.')
+    } finally {
+      setGeneratingReport(false)
+    }
+  }
+
   const fetchProjects = () => {
     fetch('/api/projects')
       .then(r => r.json())
@@ -178,19 +221,27 @@ export default function ProjectsPage() {
                     {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'present'}
                   </p>
                 )}
-                <div className="mt-auto pt-4 border-t border-blueprint-grid flex gap-2 mt-4">
-                  <Link
-                    href={`/daily-logs?projectId=${project.id}`}
-                    className="btn-secondary text-xs flex-1 text-center"
+                <div className="mt-auto pt-4 border-t border-blueprint-grid flex flex-col gap-2 mt-4">
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/daily-logs?projectId=${project.id}`}
+                      className="btn-secondary text-xs flex-1 text-center"
+                    >
+                      View Logs
+                    </Link>
+                    <Link
+                      href={`/daily-logs/new?projectId=${project.id}`}
+                      className="btn-primary text-xs flex-1 text-center"
+                    >
+                      + New Log
+                    </Link>
+                  </div>
+                  <button
+                    onClick={() => openWeeklyReport(project.id)}
+                    className="text-xs text-safety-blue border border-safety-blue/40 hover:border-safety-blue px-3 py-1.5 transition-colors w-full"
                   >
-                    View Logs
-                  </Link>
-                  <Link
-                    href={`/daily-logs/new?projectId=${project.id}`}
-                    className="btn-primary text-xs flex-1 text-center"
-                  >
-                    + New Log
-                  </Link>
+                    📊 Weekly Report
+                  </button>
                 </div>
               </div>
             ))}
@@ -222,6 +273,67 @@ export default function ProjectsPage() {
         </div>
       </main>
       <MobileNav />
+
+      {/* Weekly Report Modal */}
+      {weeklyReportProjectId && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-blueprint-bg border border-blueprint-grid w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-blueprint-grid flex justify-between items-center">
+              <div>
+                <h2 className="font-display text-xl font-bold text-safety-blue">WEEKLY REPORT</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  {projects.find(p => p.id === weeklyReportProjectId)?.title}
+                </p>
+              </div>
+              <button onClick={() => { setWeeklyReportProjectId(null); setWeeklyReport(null) }} className="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="p-6 flex-1 overflow-y-auto">
+              {!weeklyReport ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Week Starting</label>
+                    <input
+                      type="date"
+                      value={weeklyReportWeek}
+                      onChange={e => setWeeklyReportWeek(e.target.value)}
+                      className="bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+                    />
+                    <p className="text-xs text-gray-600 mt-1">Select any Monday to generate that week's report</p>
+                  </div>
+                  {reportError && <p className="text-red-400 text-sm">{reportError}</p>}
+                  <button
+                    onClick={generateWeeklyReport}
+                    disabled={generatingReport}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {generatingReport ? '⟳ Generating...' : 'Generate Report →'}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-xs text-gray-400">
+                      Week of {new Date(weeklyReport.weekStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {' – '}
+                      {new Date(weeklyReport.weekEnd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {' · '}{weeklyReport.logCount} log{weeklyReport.logCount !== 1 ? 's' : ''}
+                    </p>
+                    <button
+                      onClick={() => setWeeklyReport(null)}
+                      className="text-xs text-gray-500 hover:text-gray-300"
+                    >
+                      ← Change week
+                    </button>
+                  </div>
+                  <div className="bg-blueprint-paper/10 border border-blueprint-grid p-4 text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+                    {weeklyReport.summary}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Project Modal */}
       {showModal && (

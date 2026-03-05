@@ -30,6 +30,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Onboarding guard — if logged in but not yet onboarded, force to /onboarding
+  if (!(token as any).onboarded) {
+    const isOnboarding = pathname.startsWith('/onboarding')
+    const isApi = pathname.startsWith('/api')
+    if (!isOnboarding && !isApi) {
+      return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
+  }
+
   // Admin routes → require ADMIN role
   if (pathname.startsWith('/admin')) {
     if ((token as any).role !== 'ADMIN') {
@@ -53,5 +62,7 @@ export const config = {
     '/admin/:path*',
     '/upgrade/:path*',
     '/company/:path*',
+    '/onboarding/:path*',
+    '/onboarding',
   ],
 }

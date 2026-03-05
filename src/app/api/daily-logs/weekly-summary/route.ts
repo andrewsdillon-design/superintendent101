@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
   if (!rl.success) return NextResponse.json({ error: 'Rate limit exceeded — try again later' }, { status: 429 })
 
   const body = await req.json().catch(() => ({}))
+  const projectId: string | undefined = body.projectId || undefined
 
   // Determine week range
   let weekStart: Date
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
       userId,
       date: { gte: weekStart, lt: weekEnd },
       archived: false,
+      ...(projectId ? { projectId } : {}),
     },
     include: { project: { select: { id: true, title: true } } },
     orderBy: { date: 'asc' },

@@ -56,7 +56,11 @@ function formatTime(secs: number) {
 }
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0]
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function NewDailyLogForm() {
@@ -67,6 +71,7 @@ function NewDailyLogForm() {
   const builderType = (session?.user as any)?.builderType ?? null
   const isResidential = builderType === 'RESIDENTIAL'
   const isCommercial = builderType === 'COMMERCIAL'
+  const defaultProjectId = (session?.user as any)?.defaultProjectId ?? null
 
   // Projects
   const [projects, setProjects] = useState<Project[]>([])
@@ -98,6 +103,7 @@ function NewDailyLogForm() {
   const [showTranscript, setShowTranscript] = useState(false)
   const [audioFileName, setAudioFileName] = useState('')
   const [pasteText, setPasteText] = useState('')
+  const [formRevealed, setFormRevealed] = useState(false)
 
   // Multi-lot state
   const [multiLogs, setMultiLogs] = useState<MultiLogEntry[]>([])
@@ -121,6 +127,13 @@ function NewDailyLogForm() {
       .then(d => setProjects(d.projects ?? []))
       .catch(() => {})
   }, [])
+
+  // Auto-select default project if no projectId from URL
+  useEffect(() => {
+    if (!projectIdParam && defaultProjectId && !projectId) {
+      setProjectId(defaultProjectId)
+    }
+  }, [defaultProjectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
@@ -230,6 +243,7 @@ function NewDailyLogForm() {
       })
       setMultiProjectSelections(selections)
       setTranscribeState('done')
+      setFormRevealed(true)
       return
     }
 
@@ -251,6 +265,37 @@ function NewDailyLogForm() {
       if (rows.length > 0) setCrew(rows)
     }
     setTranscribeState('done')
+
+    // Warn if transcription heard something but structuring produced no fields
+    const hasAnyField = s.weather || s.workPerformed || s.inspections || s.issues
+    if (!hasAnyField && rawTranscript) {
+      setTranscribeError(`Transcribed but form is empty — heard: "${rawTranscript.slice(0, 200)}"`)
+    }
+
+    setFormRevealed(true)
+  }
+
+  // ── Reset back to mic hero ─────────────────────────────────────────────────
+  function resetToMicHero() {
+    setFormRevealed(false)
+    setTranscribeState('idle')
+    setTranscript('')
+    setShowTranscript(false)
+    setTranscribeError('')
+    setAudioFileName('')
+    setPasteText('')
+    setMultiLogs([])
+    setWeather('')
+    setCrew([{ trade: '', count: '' }])
+    setWorkPerformed('')
+    setDeliveries('')
+    setInspections('')
+    setIssues('')
+    setRfi('')
+    setSafetyNotes('')
+    setAddress('')
+    setLotNumber('')
+    setPermitNumber('')
   }
 
   async function transcribeBlob(blob: Blob, filename: string) {
@@ -432,144 +477,150 @@ function NewDailyLogForm() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8 pb-24 md:pb-8">
-        <h1 className="font-display text-2xl font-bold text-safety-green mb-1">NEW DAILY LOG</h1>
-        <p className="text-gray-400 text-sm mb-6">
-          Use voice transcription to auto-fill, or fill in the fields manually.
-        </p>
+      <main className="max-w-2xl mx-auto px-4 pb-24 md:pb-8">
 
-        {/* Voice Transcription Banner */}
-        <div className={`card mb-6 border-2 ${transcribeState === 'done' ? 'border-safety-green' : 'border-safety-orange/50'}`}>
-          <h3 className="font-bold text-safety-orange text-sm uppercase mb-3">🎙 Voice Transcription</h3>
-          {transcribeError && (
-            <div className="mb-3 text-sm text-red-400 p-2 bg-red-900/20 border border-red-500/30">
-              {transcribeError}
-            </div>
-          )}
+        {/* ── Mic hero — shown until form is revealed ── */}
+        {!formRevealed && (
+          <div className="flex flex-col items-center justify-center min-h-[72vh] gap-5">
 
-          {transcribeState === 'idle' && (
-            <div className="space-y-3">
-              {/* Record from mic */}
-              <button type="button" onClick={startRecording} className="btn-primary w-full">
-                ● Record Field Notes
-              </button>
-              {/* Upload audio file */}
-              <div className="relative">
-                <input
-                  ref={audioInputRef}
-                  type="file"
-                  accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac,.wma,.opus"
-                  onChange={handleAudioFileChange}
-                  className="hidden"
-                />
+            {transcribeState === 'idle' && (
+              <>
                 <button
                   type="button"
-                  onClick={() => audioInputRef.current?.click()}
-                  className="btn-secondary w-full text-sm"
+                  onClick={startRecording}
+                  className="w-24 h-24 rounded-full bg-safety-orange flex items-center justify-center text-4xl shadow-lg hover:opacity-90 transition-opacity"
+                  style={{ boxShadow: '0 0 32px rgba(249,115,22,0.4)' }}
                 >
-                  ↑ Upload Audio File
+                  🎙
                 </button>
-              </div>
-              {/* Paste transcript */}
-              <button
-                type="button"
-                onClick={() => setTranscribeState('paste')}
-                className="btn-secondary w-full text-sm"
-              >
-                📋 Paste Transcript
-              </button>
-              <p className="text-xs text-gray-600 text-center">MP3, M4A, WAV, OGG, FLAC — max 25MB</p>
-            </div>
-          )}
-
-          {transcribeState === 'paste' && (
-            <div className="space-y-3">
-              <textarea
-                value={pasteText}
-                onChange={e => setPasteText(e.target.value)}
-                rows={6}
-                placeholder="Paste or type your field notes here — GPT-4o-mini will structure them into your form..."
-                className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan resize-none text-sm"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handlePasteSubmit}
-                  disabled={!pasteText.trim()}
-                  className="btn-primary flex-1 text-sm disabled:opacity-50"
-                >
-                  Structure → Fill Form
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setTranscribeState('idle'); setPasteText(''); setTranscribeError('') }}
-                  className="btn-secondary text-sm px-4"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {transcribeState === 'recording' && (
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-3">
-                <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                <span className="font-mono text-2xl text-white">{formatTime(recordingSeconds)}</span>
-              </div>
-              <p className="text-xs text-gray-400">Recording — speak clearly about what you observed today</p>
-              <button type="button" onClick={stopRecording} className="btn-primary w-full">
-                ■ Stop &amp; Transcribe
-              </button>
-            </div>
-          )}
-
-          {transcribeState === 'transcribing' && (
-            <div className="text-center py-4">
-              <p className="font-mono text-neon-cyan animate-pulse">⟳ Transcribing &amp; structuring...</p>
-              {audioFileName && <p className="text-xs text-gray-500 mt-1">{audioFileName}</p>}
-              <p className="text-xs text-gray-500 mt-2">Whisper → GPT-4o-mini filling your form fields</p>
-            </div>
-          )}
-
-          {transcribeState === 'done' && (
-            <div>
-              <p className="text-safety-green text-sm font-semibold mb-2">
-                {multiLogs.length > 1
-                  ? `✓ ${multiLogs.length} lots detected — review & save below`
-                  : '✓ Form auto-filled from voice note'}
-              </p>
-              {transcript && (
-                <div>
+                <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">Tap to Record</p>
+                <div className="flex gap-3 mt-2">
+                  <label
+                    htmlFor="audio-upload"
+                    className="btn-secondary text-sm cursor-pointer px-4 py-2"
+                  >
+                    ↑ Upload Audio
+                  </label>
+                  <input
+                    id="audio-upload"
+                    ref={audioInputRef}
+                    type="file"
+                    accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.aac,.wma,.opus"
+                    onChange={handleAudioFileChange}
+                    className="hidden"
+                  />
                   <button
                     type="button"
-                    onClick={() => setShowTranscript(v => !v)}
-                    className="text-xs text-gray-500 hover:text-gray-300"
+                    onClick={() => setTranscribeState('paste')}
+                    className="btn-secondary text-sm px-4 py-2"
                   >
-                    {showTranscript ? '▲ Hide' : '▼ Show'} raw transcript
+                    📋 Paste Transcript
                   </button>
-                  {showTranscript && (
-                    <div className="mt-2 p-2 bg-blueprint-paper/20 border border-blueprint-grid text-xs text-gray-400 max-h-32 overflow-auto">
-                      {transcript}
-                    </div>
-                  )}
                 </div>
-              )}
+                <p className="text-xs text-gray-700">MP3, M4A, WAV, OGG, FLAC — max 25MB</p>
+              </>
+            )}
+
+            {transcribeState === 'recording' && (
+              <>
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  className="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center text-4xl animate-pulse hover:opacity-90"
+                >
+                  ⏹
+                </button>
+                <div className="flex items-center gap-3">
+                  <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                  <span className="font-mono text-3xl text-white tracking-widest">{formatTime(recordingSeconds)}</span>
+                </div>
+                <p className="text-xs font-bold text-gray-500 tracking-widest uppercase">Click to Stop</p>
+              </>
+            )}
+
+            {transcribeState === 'transcribing' && (
+              <>
+                <div className="w-24 h-24 rounded-full border-2 border-neon-cyan flex items-center justify-center">
+                  <span className="font-mono text-neon-cyan text-3xl animate-spin inline-block">⟳</span>
+                </div>
+                <p className="font-mono text-neon-cyan animate-pulse text-sm">Transcribing &amp; structuring...</p>
+                {audioFileName && <p className="text-xs text-gray-600">{audioFileName}</p>}
+              </>
+            )}
+
+            {transcribeState === 'paste' && (
+              <div className="w-full space-y-3">
+                <h3 className="font-bold text-safety-orange text-sm uppercase tracking-wide">Paste Transcript</h3>
+                <textarea
+                  value={pasteText}
+                  onChange={e => setPasteText(e.target.value)}
+                  rows={7}
+                  placeholder="Paste or type your field notes here — AI will structure them into the form..."
+                  className="w-full bg-blueprint-bg border border-blueprint-grid p-3 text-white focus:outline-none focus:border-neon-cyan resize-none text-sm"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePasteSubmit}
+                    disabled={!pasteText.trim()}
+                    className="btn-primary flex-1 text-sm disabled:opacity-50"
+                  >
+                    Structure → Fill Form
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setTranscribeState('idle'); setPasteText(''); setTranscribeError('') }}
+                    className="btn-secondary text-sm px-4"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {transcribeError && (
+              <div className="text-sm text-red-400 p-3 bg-red-900/20 border border-red-500/30 w-full">
+                {transcribeError}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Re-record bar + form — shown after transcription ── */}
+        {formRevealed && (
+          <>
+            <div className="flex items-center gap-3 py-4 border-b border-blueprint-grid mb-6">
               <button
                 type="button"
-                onClick={() => { setTranscribeState('idle'); setTranscript(''); setTranscribeError(''); setAudioFileName(''); setPasteText(''); setMultiLogs([]) }}
-                className="text-xs text-gray-500 hover:text-white mt-2 block"
+                onClick={resetToMicHero}
+                className="text-sm text-safety-orange border border-safety-orange/50 hover:border-safety-orange px-3 py-1.5 transition-colors"
               >
-                Re-record / Upload / Paste different input
+                🎙 Re-record
               </button>
+              {transcript && (
+                <button
+                  type="button"
+                  onClick={() => setShowTranscript(v => !v)}
+                  className="text-sm text-gray-500 hover:text-gray-300 px-3 py-1.5 border border-blueprint-grid"
+                >
+                  📋 {showTranscript ? 'Hide' : 'Transcript'}
+                </button>
+              )}
+              {transcribeError && (
+                <span className="text-xs text-red-400 flex-1 text-right">{transcribeError}</span>
+              )}
             </div>
-          )}
-          <p className="text-xs text-gray-600 mt-3">Audio is transcribed in-memory and not stored.</p>
-        </div>
+            {showTranscript && transcript && (
+              <div className="mb-6 p-3 bg-blueprint-paper/10 border border-blueprint-grid text-xs text-gray-400 max-h-32 overflow-auto">
+                {transcript}
+              </div>
+            )}
+          </>
+        )}
 
-        {/* ── Multi-lot review UI ─────────────────────────────────────── */}
-        {multiLogs.length > 1 && (
+        {/* ── Multi-lot + form — shown after transcription ── */}
+        {formRevealed && multiLogs.length > 1 && (
           <div className="card mb-6 border-2 border-safety-yellow">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-safety-yellow text-sm uppercase tracking-wide">
@@ -630,7 +681,7 @@ function NewDailyLogForm() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {formRevealed && <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* Project Picker */}
           <div>
@@ -971,7 +1022,7 @@ function NewDailyLogForm() {
               Cancel
             </Link>
           </div>
-        </form>
+        </form>}
       </main>
     </div>
   )
