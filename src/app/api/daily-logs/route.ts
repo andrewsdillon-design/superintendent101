@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
+import { decryptToken, refreshAccessToken, encryptToken, tokenExpiryDate, pushDailyLogToProcore } from '@/lib/procore'
 
 // GET /api/daily-logs — list logs for the authenticated user
 export async function GET(req: NextRequest) {
@@ -144,5 +145,52 @@ export async function POST(req: NextRequest) {
     },
   })
 
+  // Fire-and-forget Procore push (non-blocking)
+  if (log.projectId) {
+    pushToProcore(userId, log).catch(err => console.error('[Procore auto-push]', err))
+  }
+
   return NextResponse.json({ log }, { status: 201 })
+}
+
+async function pushToProcore(userId: string, log: { id: string; projectId: string | null; date: Date; crewCounts: any; workPerformed: string; deliveries: string; inspections: string; issues: string; safetyNotes: string; rfi: string }) {
+  if (!log.projectId) return
+
+  const [dbUser, link] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { procoreAccessToken: true, procoreRefreshToken: true, procoreTokenExpiry: true },
+    }),
+    prisma.procoreProjectLink.findUnique({
+      where: { userId_projectId: { userId, projectId: log.projectId } },
+    }),
+  ])
+
+  if (!dbUser?.procoreAccessToken || !link) return
+
+  let accessToken = decryptToken(dbUser.procoreAccessToken)
+
+  if (dbUser.procoreTokenExpiry && new Date() >= dbUser.procoreTokenExpiry) {
+    const tokens = await refreshAccessToken(dbUser.procoreRefreshToken!)
+    accessToken = tokens.access_token
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        procoreAccessToken:  encryptToken(tokens.access_token),
+        procoreRefreshToken: encryptToken(tokens.refresh_token),
+        procoreTokenExpiry:  tokenExpiryDate(tokens.expires_in),
+      },
+    })
+  }
+
+  await pushDailyLogToProcore(accessToken, link.procoreCompanyId, link.procoreProjectId, {
+    date:          log.date,
+    crewCounts:    log.crewCounts as Record<string, number>,
+    workPerformed: log.workPerformed,
+    deliveries:    log.deliveries,
+    inspections:   log.inspections,
+    issues:        log.issues,
+    safetyNotes:   log.safetyNotes,
+    rfi:           log.rfi,
+  })
 }

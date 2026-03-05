@@ -27,6 +27,7 @@ function ProfileContent() {
   const user = session?.user as any
   const searchParams = useSearchParams()
   const upgraded = searchParams.get('upgraded')
+  const procoreParam = searchParams.get('procore')
 
   const name = user?.name || user?.username || 'User'
   const username = user?.username || ''
@@ -40,6 +41,17 @@ function ProfileContent() {
   const [structureModel, setStructureModel] = useState('gpt-4o')
   const [savingModel, setSavingModel] = useState(false)
   const [modelSaved, setModelSaved] = useState(false)
+
+  // Procore integration state
+  const [procoreConnected, setProcoreConnected] = useState(false)
+  const [procoreLoading, setProcoreLoading] = useState(false)
+  const [procoreCompanies, setProcoreCompanies] = useState<any[]>([])
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null)
+  const [procoreProjects, setProcoreProjects] = useState<any[]>([])
+  const [myProjects, setMyProjects] = useState<any[]>([])
+  const [projectLinks, setProjectLinks] = useState<Record<string, number>>({}) // projectId → procoreProjectId
+  const [savingLinks, setSavingLinks] = useState<Record<string, boolean>>({})
+  const [procoreMsg, setProcoreMsg] = useState('')
   const [smtp, setSmtp] = useState({
     emailFromName: '', emailFromAddr: '', emailSmtpHost: '',
     emailSmtpPort: '587', emailSmtpSecure: true, emailSmtpUser: '', emailSmtpPass: '',
@@ -50,6 +62,88 @@ function ProfileContent() {
   const [testingSmtp, setTestingSmtp] = useState(false)
   const [smtpError, setSmtpError] = useState('')
   const [smtpTestResult, setSmtpTestResult] = useState('')
+
+  // Load Procore status + project links
+  useEffect(() => {
+    fetch('/api/integrations/procore')
+      .then(r => r.json())
+      .then(d => {
+        if (d.connected) {
+          setProcoreConnected(true)
+          if (d.companyId) setSelectedCompanyId(d.companyId)
+          // Load companies
+          fetch('/api/integrations/procore/companies')
+            .then(r => r.json())
+            .then(d => d.companies && setProcoreCompanies(d.companies))
+            .catch(() => {})
+        }
+      })
+      .catch(() => {})
+    fetch('/api/integrations/procore/link')
+      .then(r => r.json())
+      .then(d => {
+        if (d.links) {
+          const map: Record<string, number> = {}
+          d.links.forEach((l: any) => { map[l.projectId] = l.procoreProjectId })
+          setProjectLinks(map)
+        }
+      })
+      .catch(() => {})
+    fetch('/api/projects')
+      .then(r => r.json())
+      .then(d => d.projects && setMyProjects(d.projects))
+      .catch(() => {})
+  }, [])
+
+  // Load Procore projects when company changes
+  useEffect(() => {
+    if (!procoreConnected || !selectedCompanyId) return
+    fetch(`/api/integrations/procore/projects?companyId=${selectedCompanyId}`)
+      .then(r => r.json())
+      .then(d => d.projects && setProcoreProjects(d.projects))
+      .catch(() => {})
+  }, [procoreConnected, selectedCompanyId])
+
+  const handleProcoreConnect = async () => {
+    setProcoreLoading(true)
+    try {
+      const res = await fetch('/api/integrations/procore/connect')
+      const d = await res.json()
+      if (d.url) window.location.href = d.url
+    } catch { setProcoreMsg('Connection failed.') }
+    finally { setProcoreLoading(false) }
+  }
+
+  const handleProcoreDisconnect = async () => {
+    if (!confirm('Disconnect Procore? This will remove all project links.')) return
+    await fetch('/api/integrations/procore', { method: 'DELETE' })
+    setProcoreConnected(false)
+    setProcoreProjects([])
+    setProcoreCompanies([])
+    setProjectLinks({})
+    setProcoreMsg('Procore disconnected.')
+  }
+
+  const handleLinkProject = async (projectId: string, procoreProjectId: number) => {
+    if (!selectedCompanyId) return
+    setSavingLinks(s => ({ ...s, [projectId]: true }))
+    try {
+      await fetch('/api/integrations/procore/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, procoreProjectId, procoreCompanyId: selectedCompanyId }),
+      })
+      setProjectLinks(s => ({ ...s, [projectId]: procoreProjectId }))
+      setProcoreMsg('Project linked — logs will auto-push to Procore.')
+      setTimeout(() => setProcoreMsg(''), 3000)
+    } catch { setProcoreMsg('Failed to link project.') }
+    finally { setSavingLinks(s => ({ ...s, [projectId]: false })) }
+  }
+
+  const handleUnlinkProject = async (projectId: string) => {
+    await fetch(`/api/integrations/procore/link?projectId=${projectId}`, { method: 'DELETE' })
+    setProjectLinks(s => { const n = { ...s }; delete n[projectId]; return n })
+  }
 
   // Load current model preference + SMTP settings
   useEffect(() => {
@@ -232,6 +326,16 @@ function ProfileContent() {
         {upgraded && (
           <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
             Subscription active. Welcome to Daily Logs Pro!
+          </div>
+        )}
+        {procoreParam === 'connected' && (
+          <div className="mb-6 p-4 bg-safety-green/10 border border-safety-green text-safety-green text-sm rounded">
+            Procore connected! Now link your projects below to start auto-pushing daily logs.
+          </div>
+        )}
+        {procoreParam === 'error' && (
+          <div className="mb-6 p-4 bg-red-900/20 border border-red-500 text-red-400 text-sm rounded">
+            Procore connection failed. Please try again.
           </div>
         )}
 
@@ -423,6 +527,100 @@ function ProfileContent() {
               {testingSmtp ? 'Sending test...' : 'Send Test Email'}
             </button>
           </div>
+        </div>
+
+        {/* Procore Integration */}
+        <div className="card mt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h3 className="font-bold text-neon-cyan">PROCORE INTEGRATION</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Auto-push daily logs to Procore when you save them.
+              </p>
+            </div>
+            {!procoreConnected ? (
+              <button
+                onClick={handleProcoreConnect}
+                disabled={procoreLoading}
+                className="btn-primary text-sm disabled:opacity-50"
+              >
+                {procoreLoading ? 'Connecting...' : 'Connect Procore'}
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-safety-green font-bold">● CONNECTED</span>
+                <button
+                  onClick={handleProcoreDisconnect}
+                  className="text-xs text-gray-500 hover:text-red-400 underline"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
+          </div>
+
+          {procoreConnected && (
+            <>
+              {/* Company selector */}
+              {procoreCompanies.length > 1 && (
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-1">PROCORE COMPANY</label>
+                  <select
+                    value={selectedCompanyId ?? ''}
+                    onChange={e => setSelectedCompanyId(Number(e.target.value))}
+                    className="bg-blueprint-paper border border-blueprint-grid rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-neon-cyan w-full"
+                  >
+                    {procoreCompanies.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Project linking */}
+              {myProjects.length > 0 && procoreProjects.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 font-semibold mb-2">LINK YOUR PROJECTS TO PROCORE</p>
+                  <div className="space-y-2">
+                    {myProjects.map((p: any) => (
+                      <div key={p.id} className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-white min-w-[140px]">{p.title}</span>
+                        <span className="text-gray-600 text-xs">→</span>
+                        <select
+                          value={projectLinks[p.id] ?? ''}
+                          onChange={e => {
+                            const val = e.target.value
+                            if (val === '') handleUnlinkProject(p.id)
+                            else handleLinkProject(p.id, Number(val))
+                          }}
+                          disabled={savingLinks[p.id]}
+                          className="flex-1 bg-blueprint-paper border border-blueprint-grid rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-neon-cyan disabled:opacity-50"
+                        >
+                          <option value="">— Not linked —</option>
+                          {procoreProjects.map((pp: any) => (
+                            <option key={pp.id} value={pp.id}>{pp.name}</option>
+                          ))}
+                        </select>
+                        {projectLinks[p.id] && (
+                          <span className="text-xs text-safety-green font-bold">✓</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {procoreProjects.length === 0 && selectedCompanyId && (
+                <p className="text-xs text-gray-500">No projects found in this Procore company.</p>
+              )}
+            </>
+          )}
+
+          {procoreMsg && (
+            <p className={`text-xs font-medium ${procoreMsg.includes('fail') || procoreMsg.includes('error') ? 'text-red-400' : 'text-safety-green'}`}>
+              {procoreMsg}
+            </p>
+          )}
         </div>
 
         <div className="card mt-6">
