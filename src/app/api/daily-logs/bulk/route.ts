@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rl = rateLimit(`bulk-log:${userId}`, { limit: 20, windowMs: 60_000 })
+  const rl = rateLimit(`bulk-log:${userId}`, { limit: 40, windowMs: 60_000 })
   if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const body = await req.json()

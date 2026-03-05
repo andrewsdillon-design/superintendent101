@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rl = rateLimit(`weekly-summary:${userId}`, { limit: 10, windowMs: 60 * 60 * 1000 })
+  const rl = rateLimit(`weekly-summary:${userId}`, { limit: 20, windowMs: 60 * 60 * 1000 })
   if (!rl.success) return NextResponse.json({ error: 'Rate limit exceeded — try again later' }, { status: 429 })
 
   const body = await req.json().catch(() => ({}))

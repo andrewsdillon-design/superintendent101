@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rl = rateLimit(`transcribe:${userId}`, { limit: 100, windowMs: 60 * 60 * 1000 })
+  const rl = rateLimit(`transcribe:${userId}`, { limit: 200, windowMs: 60 * 60 * 1000 })
   if (!rl.success) return NextResponse.json({ error: 'Rate limit exceeded — try again later' }, { status: 429 })
 
   if (!process.env.OPENAI_API_KEY) {
