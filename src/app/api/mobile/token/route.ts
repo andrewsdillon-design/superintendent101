@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
         subscription: true,
         role: true,
         builderType: true,
+        onboarded: true,
+        defaultProjectId: true,
+        procoreAccessToken: true,
       },
     })
 
@@ -43,6 +46,7 @@ export async function POST(req: NextRequest) {
       username: user.username,
       subscription: user.subscription,
       role: user.role,
+      onboarded: user.onboarded,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
@@ -59,6 +63,9 @@ export async function POST(req: NextRequest) {
         subscription: user.subscription,
         role: user.role,
         builderType: user.builderType,
+        onboarded: user.onboarded,
+        defaultProjectId: user.defaultProjectId,
+        procoreConnected: !!user.procoreAccessToken,
       },
     })
   } catch (err) {

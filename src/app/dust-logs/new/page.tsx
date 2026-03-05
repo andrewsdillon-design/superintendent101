@@ -273,7 +273,7 @@ export default function NewDailyLogPage() {
         projectName,
         address,
         permitNumber: selectedJobSite?.permitNumber || '',
-        date: new Date().toISOString().split('T')[0],
+        date: (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}` })(),
       }),
     })
     const data = await res.json()
@@ -305,7 +305,7 @@ export default function NewDailyLogPage() {
       body: JSON.stringify({
         projectName,
         address,
-        date: new Date().toISOString().split('T')[0],
+        date: (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}` })(),
         duration: Math.round(recordingSeconds / 60) || null,
         structured,
         tags: structured?.tags || [],

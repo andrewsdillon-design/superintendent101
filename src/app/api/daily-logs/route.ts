@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
 import { decryptToken, refreshAccessToken, encryptToken, tokenExpiryDate, pushDailyLogToProcore } from '@/lib/procore'
+import { rateLimit } from '@/lib/rate-limit'
 
 // GET /api/daily-logs — list logs for the authenticated user
 export async function GET(req: NextRequest) {
@@ -39,6 +40,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rl = rateLimit(`log-create:${userId}`, { limit: 60, windowMs: 60_000 })
+  if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const body = await req.json()
   const {

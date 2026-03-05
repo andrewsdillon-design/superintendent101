@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
+import { rateLimit } from '@/lib/rate-limit'
 
 interface BulkLogInput {
   projectId?: string
@@ -22,6 +23,9 @@ interface BulkLogInput {
 export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rl = rateLimit(`bulk-log:${userId}`, { limit: 20, windowMs: 60_000 })
+  if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const body = await req.json()
   const { logs } = body as { logs: BulkLogInput[] }
@@ -66,8 +70,17 @@ export async function POST(req: NextRequest) {
 
   const results = await prisma.$transaction(async (tx) => {
     const out = []
+    // Track projectId+date combos already handled in this batch.
+    // If the same combo appears more than once (e.g. multiple lots assigned to one project),
+    // subsequent entries must create new records rather than upsert into the same one.
+    const seenKeys = new Set<string>()
+
     for (const log of logs) {
-      const existing = log.projectId
+      const batchKey = `${log.projectId ?? '_'}:${log.date}`
+      const isFirstInBatch = !seenKeys.has(batchKey)
+      seenKeys.add(batchKey)
+
+      const existing = (log.projectId && isFirstInBatch)
         ? await tx.dailyLog.findFirst({
             where: { userId, projectId: log.projectId, date: new Date(log.date) },
           })

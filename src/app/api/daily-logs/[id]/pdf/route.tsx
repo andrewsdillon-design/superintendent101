@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
 import { renderDailyLogPdf } from '@/lib/pdf/daily-log-pdf'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rl = rateLimit(`pdf:${userId}`, { limit: 20, windowMs: 60_000 })
+  if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
   const log = await prisma.dailyLog.findFirst({
     where: { id: params.id, userId },
@@ -23,11 +27,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     url.startsWith('http') ? url : `${origin}${url}`
   )
 
-  const uint8 = await renderDailyLogPdf({
-    ...log,
-    photoUrls: absolutePhotoUrls,
-    crewCounts: log.crewCounts as Record<string, number>,
-  })
+  let uint8: Uint8Array
+  try {
+    uint8 = await renderDailyLogPdf({
+      ...log,
+      photoUrls: absolutePhotoUrls,
+      crewCounts: (log.crewCounts ?? {}) as Record<string, number>,
+    })
+  } catch (err) {
+    console.error('PDF render error for log', params.id, err)
+    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 })
+  }
 
   const filename = `daily-log-${log.date.toISOString().split('T')[0]}.pdf`
 

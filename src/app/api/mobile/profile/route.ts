@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getUserId } from '@/lib/get-user-id'
 
-const ALLOWED_MODELS = ['gpt-4o', 'gpt-4o-mini', 'grok-4.1-reasoning']
+const ALLOWED_MODELS = ['gpt-4o', 'grok-4.1-reasoning']
 
 // GET /api/mobile/profile
 export async function GET(req: NextRequest) {
@@ -11,12 +11,18 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { builderType: true, structureModel: true },
+    select: { builderType: true, structureModel: true, onboarded: true, defaultProjectId: true, procoreAccessToken: true },
   })
 
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  return NextResponse.json({ builderType: user.builderType, structureModel: user.structureModel ?? 'gpt-4o' })
+  return NextResponse.json({
+    builderType: user.builderType,
+    structureModel: user.structureModel ?? 'gpt-4o',
+    onboarded: user.onboarded,
+    defaultProjectId: user.defaultProjectId,
+    procoreConnected: !!user.procoreAccessToken,
+  })
 }
 
 // PATCH /api/mobile/profile

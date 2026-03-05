@@ -1,4 +1,5 @@
 const path = require('path')
+const { withSentryConfig } = require('@sentry/nextjs')
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -20,7 +21,7 @@ const securityHeaders = [
 ]
 
 /** @type {import('next').NextConfig} */
-module.exports = {
+const nextConfig = {
   reactStrictMode: true,
   experimental: {
     serverComponentsExternalPackages: ['@react-pdf/renderer'],
@@ -41,3 +42,12 @@ module.exports = {
     return config
   },
 }
+
+module.exports = withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: true,
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  disableLogger: true,
+})
