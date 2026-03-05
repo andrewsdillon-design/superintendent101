@@ -1,13 +1,12 @@
 import { encrypt, decrypt } from '@/lib/encrypt'
 
-const isProd = process.env.NODE_ENV === 'production'
-
+// Single set of vars — set to production values on VPS, sandbox values locally
 export const PROCORE_CONFIG = {
-  clientId:     isProd ? process.env.PROCORE_CLIENT_ID!     : process.env.PROCORE_SANDBOX_CLIENT_ID!,
-  clientSecret: isProd ? process.env.PROCORE_CLIENT_SECRET! : process.env.PROCORE_SANDBOX_CLIENT_SECRET!,
-  redirectUri:  isProd ? process.env.PROCORE_REDIRECT_URI!  : process.env.PROCORE_SANDBOX_REDIRECT_URI!,
-  authBase:     isProd ? 'https://login.procore.com'        : 'https://login-sandbox.procore.com',
-  apiBase:      isProd ? 'https://api.procore.com'          : 'https://sandbox.procore.com',
+  clientId:     process.env.PROCORE_CLIENT_ID!,
+  clientSecret: process.env.PROCORE_CLIENT_SECRET!,
+  redirectUri:  process.env.PROCORE_REDIRECT_URI!,
+  authBase:     process.env.PROCORE_AUTH_BASE ?? 'https://login.procore.com',
+  apiBase:      process.env.PROCORE_API_BASE  ?? 'https://api.procore.com',
 }
 
 export function getProcoreAuthUrl(state: string): string {
