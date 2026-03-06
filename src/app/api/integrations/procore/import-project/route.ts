@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
   // Check if already imported (link exists)
   const existing = await prisma.procoreProjectLink.findFirst({
     where: { userId, procoreProjectId: Number(procoreProjectId) },
-    include: { project: true },
   })
   if (existing) {
-    return NextResponse.json({ project: existing.project, alreadyImported: true })
+    const project = await prisma.project.findUnique({ where: { id: existing.projectId } })
+    return NextResponse.json({ project, alreadyImported: true })
   }
 
   const project = await prisma.project.create({
