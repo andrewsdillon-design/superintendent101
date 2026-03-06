@@ -8,26 +8,28 @@ import { useEffect, useState } from 'react'
 interface Project {
   id: string
   title: string
-  description: string | null
   location: string | null
-  type: string | null
-  sqft: number | null
   status: string
-  startDate: string | null
-  endDate: string | null
-  createdAt: string
+  address: string | null
+  permitNumber: string | null
+  webPortalId: string | null
+  portalType: string | null
+  planNumber: string | null
+  elevation: string | null
+  electricalSide: string | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'badge-safe',
+  ACTIVE: 'text-xs text-safety-green font-bold',
   COMPLETED: 'text-xs text-gray-400',
   PLANNING: 'text-xs text-safety-yellow',
   ON_HOLD: 'text-xs text-safety-orange',
 }
 
 const BLANK_FORM = {
-  title: '', description: '', location: '', type: '',
-  sqft: '', status: 'ACTIVE', startDate: '', endDate: '',
+  title: '', location: '', address: '', permitNumber: '',
+  planNumber: '', elevation: '', electricalSide: '',
+  webPortalId: '', portalType: '',
 }
 
 export default function ProjectsPage() {
@@ -57,6 +59,13 @@ export default function ProjectsPage() {
   const [generatingReport, setGeneratingReport] = useState(false)
   const [weeklyReport, setWeeklyReport] = useState<{ summary: string; weekStart: string; weekEnd: string; logCount: number } | null>(null)
   const [reportError, setReportError] = useState('')
+
+  // Share state
+  const [shareProject, setShareProject] = useState<Project | null>(null)
+  const [shareLabel, setShareLabel] = useState('')
+  const [shareCreating, setShareCreating] = useState(false)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [shareCopied, setShareCopied] = useState(false)
 
   function openWeeklyReport(projectId: string) {
     setWeeklyReportProjectId(projectId)
@@ -88,7 +97,7 @@ export default function ProjectsPage() {
   }
 
   const fetchProjects = () => {
-    fetch('/api/projects')
+    fetch('/api/mobile/projects?all=1')
       .then(r => r.json())
       .then(data => {
         setProjects(data.projects ?? [])
@@ -103,10 +112,20 @@ export default function ProjectsPage() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch('/api/projects', {
+      const res = await fetch('/api/mobile/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          title: form.title,
+          location: form.location || undefined,
+          address: form.address || undefined,
+          permitNumber: form.permitNumber || undefined,
+          planNumber: form.planNumber || undefined,
+          elevation: form.elevation || undefined,
+          electricalSide: form.electricalSide || undefined,
+          webPortalId: form.webPortalId || undefined,
+          portalType: form.portalType || undefined,
+        }),
       })
       const data = await res.json()
       if (res.ok) {
@@ -123,15 +142,33 @@ export default function ProjectsPage() {
     }
   }
 
+  const handleCreateShare = async () => {
+    if (!shareProject) return
+    setShareCreating(true)
+    try {
+      const res = await fetch('/api/mobile/projects/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: shareProject.id, label: shareLabel.trim() || null }),
+      })
+      const data = await res.json()
+      if (res.ok) setShareUrl(data.share.shareUrl)
+      else alert(data.error ?? 'Could not create share link.')
+    } catch {
+      alert('Network error.')
+    } finally {
+      setShareCreating(false)
+    }
+  }
+
   const displayed = projects.filter(p => {
-    const matchSearch = !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.location?.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.location?.toLowerCase().includes(search.toLowerCase()) || p.address?.toLowerCase().includes(search.toLowerCase())
     const matchStatus = !statusFilter || p.status === statusFilter
     return matchSearch && matchStatus
   })
 
   const activeCount = projects.filter(p => p.status === 'ACTIVE').length
   const completedCount = projects.filter(p => p.status === 'COMPLETED').length
-  const totalSqft = projects.reduce((sum, p) => sum + (p.sqft ?? 0), 0)
 
   return (
     <div className="min-h-screen blueprint-bg">
@@ -186,7 +223,7 @@ export default function ProjectsPage() {
             <option value="ON_HOLD">On Hold</option>
           </select>
           <div className="flex items-center text-sm text-gray-400">
-            {displayed.length} of {projects.length} projects
+            {displayed.length} of {projects.length} project{projects.length !== 1 ? 's' : ''}
           </div>
         </div>
 
@@ -206,19 +243,21 @@ export default function ProjectsPage() {
                   <h3 className="font-semibold text-lg leading-tight">{project.title}</h3>
                   <span className={STATUS_COLORS[project.status] ?? 'text-xs text-gray-400'}>{project.status}</span>
                 </div>
-                {project.location && <p className="text-sm text-gray-500">{project.location}</p>}
-                {project.description && (
-                  <p className="text-xs text-gray-400 mt-2 line-clamp-2">{project.description}</p>
+                {project.location && <p className="text-sm text-gray-500">📍 {project.location}</p>}
+                {project.address && <p className="text-xs text-gray-500 mt-0.5">🏠 {project.address}</p>}
+                {project.permitNumber && <p className="text-xs text-gray-500 mt-0.5">📋 Permit: {project.permitNumber}</p>}
+                {(project.planNumber || project.elevation || project.electricalSide) && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {[
+                      project.planNumber && `Plan ${project.planNumber}`,
+                      project.elevation && `Elev. ${project.elevation}`,
+                      project.electricalSide && `Elec. ${project.electricalSide}`,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
                 )}
-                <div className="mt-2 flex gap-4 text-sm text-gray-400 flex-wrap">
-                  {project.type && <span>{project.type}</span>}
-                  {project.sqft && <span>{project.sqft.toLocaleString()} sqft</span>}
-                </div>
-                {(project.startDate || project.endDate) && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : '?'}
-                    {' → '}
-                    {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'present'}
+                {project.webPortalId && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    🌐 {project.portalType ? `${project.portalType}: ` : ''}{project.webPortalId}
                   </p>
                 )}
                 <div className="mt-auto pt-4 border-t border-blueprint-grid flex flex-col gap-2 mt-4">
@@ -236,12 +275,20 @@ export default function ProjectsPage() {
                       + New Log
                     </Link>
                   </div>
-                  <button
-                    onClick={() => openWeeklyReport(project.id)}
-                    className="text-xs text-safety-blue border border-safety-blue/40 hover:border-safety-blue px-3 py-1.5 transition-colors w-full"
-                  >
-                    📊 Weekly Report
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openWeeklyReport(project.id)}
+                      className="text-xs text-safety-blue border border-safety-blue/40 hover:border-safety-blue px-3 py-1.5 transition-colors flex-1"
+                    >
+                      📊 Weekly Report
+                    </button>
+                    <button
+                      onClick={() => { setShareProject(project); setShareLabel(''); setShareUrl(null); setShareCopied(false) }}
+                      className="text-xs text-gray-400 border border-blueprint-grid hover:border-gray-400 px-3 py-1.5 transition-colors flex-1"
+                    >
+                      🔗 Share
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -250,7 +297,7 @@ export default function ProjectsPage() {
 
         <div className="mt-8 card">
           <h3 className="font-bold text-safety-blue mb-4">PROJECT STATS</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+          <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold text-neon-cyan">{projects.length}</p>
               <p className="text-xs text-gray-400">Total Projects</p>
@@ -262,12 +309,6 @@ export default function ProjectsPage() {
             <div>
               <p className="text-2xl font-bold text-safety-yellow">{completedCount}</p>
               <p className="text-xs text-gray-400">Completed</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {totalSqft >= 1000000 ? `${(totalSqft / 1000000).toFixed(1)}M` : totalSqft.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-400">Total sqft</p>
             </div>
           </div>
         </div>
@@ -335,6 +376,71 @@ export default function ProjectsPage() {
         </div>
       )}
 
+      {/* Share Project Modal */}
+      {shareProject && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-blueprint-bg border border-blueprint-grid w-full max-w-md">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="font-display text-lg font-bold text-safety-yellow">SHARE PROJECT</h2>
+                <button onClick={() => setShareProject(null)} className="text-gray-400 hover:text-white text-xl">✕</button>
+              </div>
+              <p className="text-xs text-gray-500 mb-5">
+                Create a read-only link for subcontractors or clients — no login required.
+              </p>
+
+              {shareUrl ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-safety-green font-bold">✓ Share link created</p>
+                  <div className="bg-blueprint-paper/20 border border-blueprint-grid rounded p-3">
+                    <p className="text-xs text-blue-300 break-all select-all">{shareUrl}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(shareUrl); setShareCopied(true); setTimeout(() => setShareCopied(false), 2000) }}
+                      className="btn-primary text-xs flex-1"
+                    >
+                      {shareCopied ? '✓ Copied!' : 'Copy Link'}
+                    </button>
+                    <button
+                      onClick={() => { setShareUrl(null); setShareLabel('') }}
+                      className="btn-secondary text-xs flex-1"
+                    >
+                      Create Another
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Label (optional)</label>
+                    <input
+                      type="text"
+                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-safety-yellow"
+                      placeholder='e.g. "Shared with ABC Electrical"'
+                      value={shareLabel}
+                      onChange={e => setShareLabel(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCreateShare}
+                      disabled={shareCreating}
+                      className="btn-primary text-sm flex-1 disabled:opacity-50"
+                    >
+                      {shareCreating ? 'Generating...' : 'Generate Share Link'}
+                    </button>
+                    <button onClick={() => setShareProject(null)} className="btn-secondary text-sm">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Project Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
@@ -352,98 +458,78 @@ export default function ProjectsPage() {
                     required
                     type="text"
                     className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
-                    placeholder="e.g. Target Store #2847"
+                    placeholder="e.g. Lot 47 — Smith Subdivision"
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-400 uppercase mb-1">Type</label>
-                    <select
-                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
-                      value={form.type}
-                      onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                    >
-                      <option value="">Select...</option>
-                      <option>Retail</option>
-                      <option>Industrial</option>
-                      <option>Multi-Family</option>
-                      <option>Healthcare</option>
-                      <option>Office</option>
-                      <option>Data Center</option>
-                      <option>Infrastructure</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 uppercase mb-1">Status</label>
-                    <select
-                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
-                      value={form.status}
-                      onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    >
-                      <option value="PLANNING">Planning</option>
-                      <option value="ACTIVE">Active</option>
-                      <option value="COMPLETED">Completed</option>
-                      <option value="ON_HOLD">On Hold</option>
-                    </select>
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-xs text-gray-400 uppercase mb-1">Location</label>
+                  <label className="block text-xs text-gray-400 uppercase mb-1">Location / Lot Number</label>
                   <input
                     type="text"
                     className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
-                    placeholder="City, State"
+                    placeholder="City, State or lot identifier"
                     value={form.location}
                     onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-400 uppercase mb-1">Square Footage</label>
+                  <label className="block text-xs text-gray-400 uppercase mb-1">Job Site Address</label>
                   <input
-                    type="number"
+                    type="text"
                     className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
-                    placeholder="e.g. 45000"
-                    value={form.sqft}
-                    onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))}
+                    placeholder="123 Main St, Dallas TX 75201"
+                    value={form.address}
+                    onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-400 uppercase mb-1">Start Date</label>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Permit #</label>
                     <input
-                      type="date"
+                      type="text"
                       className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
-                      value={form.startDate}
-                      onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                      placeholder="Optional"
+                      value={form.permitNumber}
+                      onChange={e => setForm(f => ({ ...f, permitNumber: e.target.value }))}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 uppercase mb-1">End Date</label>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Plan Number</label>
                     <input
-                      type="date"
+                      type="text"
                       className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
-                      value={form.endDate}
-                      onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                      placeholder="Optional"
+                      value={form.planNumber}
+                      onChange={e => setForm(f => ({ ...f, planNumber: e.target.value }))}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs text-gray-400 uppercase mb-1">Description</label>
-                  <textarea
-                    rows={3}
-                    className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm resize-none focus:outline-none focus:border-neon-cyan"
-                    placeholder="Brief description..."
-                    value={form.description}
-                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Elevation</label>
+                    <input
+                      type="text"
+                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
+                      placeholder="A, B, C..."
+                      value={form.elevation}
+                      onChange={e => setForm(f => ({ ...f, elevation: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase mb-1">Electrical Side</label>
+                    <input
+                      type="text"
+                      className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-neon-cyan"
+                      placeholder="Left / Right"
+                      value={form.electricalSide}
+                      onChange={e => setForm(f => ({ ...f, electricalSide: e.target.value }))}
+                    />
+                  </div>
                 </div>
 
                 {error && <p className="text-safety-orange text-sm">{error}</p>}

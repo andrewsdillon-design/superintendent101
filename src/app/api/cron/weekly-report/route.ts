@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import OpenAI from 'openai'
-import { sendEmail } from '@/lib/email'
+import { sendReportEmail } from '@/lib/email'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       const to = user.weeklyReportEmail || user.email
       const weekLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
 
-      await sendEmail({
+      await sendReportEmail({
         to,
         subject: `Weekly Field Report — ${weekLabel}`,
         html: `

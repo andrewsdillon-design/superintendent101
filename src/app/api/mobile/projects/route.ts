@@ -20,8 +20,10 @@ export async function GET(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const all = new URL(req.url).searchParams.get('all') === '1'
+
   const projects = await prisma.project.findMany({
-    where: { userId, status: { not: 'COMPLETED' } },
+    where: all ? { userId } : { userId, status: { not: 'COMPLETED' } },
     orderBy: { createdAt: 'desc' },
     select: PROJECT_SELECT,
   })

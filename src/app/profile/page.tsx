@@ -63,6 +63,12 @@ function ProfileContent() {
   const [smtpError, setSmtpError] = useState('')
   const [smtpTestResult, setSmtpTestResult] = useState('')
 
+  // Weekly report preferences
+  const [weeklyReportScheduled, setWeeklyReportScheduled] = useState(false)
+  const [weeklyReportEmail, setWeeklyReportEmail] = useState('')
+  const [savingWeekly, setSavingWeekly] = useState(false)
+  const [weeklySaved, setWeeklySaved] = useState(false)
+
   // Load Procore status + project links
   useEffect(() => {
     fetch('/api/integrations/procore')
@@ -145,13 +151,15 @@ function ProfileContent() {
     setProjectLinks(s => { const n = { ...s }; delete n[projectId]; return n })
   }
 
-  // Load current model preference + SMTP settings
+  // Load current model preference + SMTP settings + weekly report prefs
   useEffect(() => {
     fetch('/api/mobile/profile')
       .then(r => r.json())
       .then(d => {
         if (d.structureModel) setStructureModel(d.structureModel)
         if (d.builderType) setBuilderType(d.builderType)
+        if (d.weeklyReportScheduled !== undefined) setWeeklyReportScheduled(d.weeklyReportScheduled)
+        if (d.weeklyReportEmail) setWeeklyReportEmail(d.weeklyReportEmail)
       })
       .catch(() => {})
     fetch('/api/email-settings')
@@ -291,6 +299,27 @@ function ProfileContent() {
       alert('Failed to save model preference.')
     } finally {
       setSavingModel(false)
+    }
+  }
+
+  const handleSaveWeeklyPrefs = async () => {
+    setSavingWeekly(true)
+    setWeeklySaved(false)
+    try {
+      await fetch('/api/mobile/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weeklyReportScheduled,
+          weeklyReportEmail: weeklyReportEmail.trim() || null,
+        }),
+      })
+      setWeeklySaved(true)
+      setTimeout(() => setWeeklySaved(false), 3000)
+    } catch {
+      alert('Failed to save weekly report settings.')
+    } finally {
+      setSavingWeekly(false)
     }
   }
 
@@ -621,6 +650,56 @@ function ProfileContent() {
               {procoreMsg}
             </p>
           )}
+        </div>
+
+        {/* Weekly Report */}
+        <div className="card mt-6 space-y-4">
+          <div>
+            <h3 className="font-bold text-safety-yellow mb-1">WEEKLY REPORT</h3>
+            <p className="text-xs text-gray-500">
+              Automatically email a GPT-generated weekly field summary every Monday morning.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-white">Auto-Send Weekly Report</p>
+              <p className="text-xs text-gray-500 mt-0.5">Emailed every Monday — covers logs from the prior week</p>
+            </div>
+            <button
+              onClick={() => setWeeklyReportScheduled(v => !v)}
+              className={`px-4 py-1.5 text-xs font-bold border transition-colors ${
+                weeklyReportScheduled
+                  ? 'border-safety-yellow bg-safety-yellow text-blueprint-bg'
+                  : 'border-blueprint-grid text-gray-400 hover:border-gray-400'
+              }`}
+            >
+              {weeklyReportScheduled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {weeklyReportScheduled && (
+            <div>
+              <label className="block text-xs text-gray-400 uppercase mb-1">Send To (leave blank for account email)</label>
+              <input
+                type="email"
+                className="w-full bg-blueprint-paper/20 border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-safety-yellow"
+                placeholder="override@email.com"
+                value={weeklyReportEmail}
+                onChange={e => setWeeklyReportEmail(e.target.value)}
+              />
+            </div>
+          )}
+
+          {weeklySaved && <p className="text-xs text-safety-green">Weekly report settings saved.</p>}
+
+          <button
+            onClick={handleSaveWeeklyPrefs}
+            disabled={savingWeekly}
+            className="btn-primary text-sm disabled:opacity-50"
+          >
+            {savingWeekly ? 'Saving...' : 'Save Report Settings'}
+          </button>
         </div>
 
         <div className="card mt-6">
