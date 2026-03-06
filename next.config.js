@@ -1,5 +1,4 @@
 const path = require('path')
-const { withSentryConfig } = require('@sentry/nextjs')
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -43,11 +42,4 @@ const nextConfig = {
   },
 }
 
-module.exports = withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: true,
-  widenClientFileUpload: true,
-  hideSourceMaps: true,
-  disableLogger: true,
-})
+module.exports = nextConfig
