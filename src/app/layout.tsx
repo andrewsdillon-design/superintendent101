@@ -1,5 +1,6 @@
 import './globals.css'
 import { Providers } from './providers'
+import { HighlightInit } from '@highlight-run/next/client'
 
 export const metadata = {
   title: 'ProFieldHub',
@@ -16,6 +17,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="blueprint-bg min-h-screen">
+        <HighlightInit
+          projectId="3"
+          serviceName="profieldhub-web"
+          tracingOrigins
+          networkRecording={{ enabled: true, recordHeadersAndBody: true }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

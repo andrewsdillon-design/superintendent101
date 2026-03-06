@@ -12,9 +12,11 @@
     "db:migrate": "prisma migrate deploy"
   },
   "dependencies": {
+    "@highlight-run/next": "^7.9.38",
     "@prisma/client": "^5.10.0",
     "@rainbow-me/rainbowkit": "^2.2.7",
     "@react-pdf/renderer": "^4.3.2",
+    "@sentry/nextjs": "^10.42.0",
     "@tanstack/react-query": "^5.90.21",
     "@types/nodemailer": "^7.0.11",
     "autoprefixer": "^10.4.27",
