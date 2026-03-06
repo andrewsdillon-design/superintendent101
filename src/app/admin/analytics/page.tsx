@@ -17,8 +17,6 @@ interface Overview {
   byService: ServiceBreakdown[]
   uniqueActiveUsers: number
   totalUsers: number
-  totalJobSites: number
-  totalLogs: number
 }
 
 interface UserRow {
@@ -212,8 +210,8 @@ export default function AnalyticsPage() {
                 <p className="text-xs text-gray-600">{ov.totalUsers} total registered</p>
               </div>
               <div className="card text-center">
-                <p className="font-display text-2xl font-bold text-safety-orange">{ov.totalJobSites}</p>
-                <p className="text-xs text-gray-400 mt-1">Job Sites Created</p>
+                <p className="font-display text-2xl font-bold text-safety-orange">{ov.totalUsers}</p>
+                <p className="text-xs text-gray-400 mt-1">Total Registered</p>
               </div>
             </div>
 
