@@ -155,7 +155,8 @@ export default function ProcorePage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setSyncResults(prev => ({ ...prev, [p.id]: `✓ Synced ${data.synced}/${data.total} logs` }))
+        const errMsg = data.errors?.length ? ` | ${data.errors[0]}` : ''
+        setSyncResults(prev => ({ ...prev, [p.id]: `✓ Synced ${data.synced}/${data.total} logs${errMsg}` }))
       } else {
         setSyncResults(prev => ({ ...prev, [p.id]: data.error ?? 'Sync failed' }))
       }
