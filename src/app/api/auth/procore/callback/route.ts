@@ -23,9 +23,16 @@ export async function GET(req: NextRequest) {
   try {
     const tokens = await exchangeCode(code)
 
-    // Fetch default company from Procore
-    const companies = await procoreApi(tokens.access_token, '/rest/v1.0/companies')
-    const defaultCompany = Array.isArray(companies) && companies.length > 0 ? companies[0] : null
+    // Fetch default company — non-fatal if it fails (e.g. app not yet installed in company)
+    let defaultCompanyId: number | undefined
+    try {
+      const companies = await procoreApi(tokens.access_token, '/rest/v1.0/companies')
+      if (Array.isArray(companies) && companies.length > 0) {
+        defaultCompanyId = companies[0].id
+      }
+    } catch (err) {
+      console.warn('[Procore callback] Could not fetch companies:', err)
+    }
 
     await prisma.user.update({
       where: { id: user.id },
@@ -33,7 +40,7 @@ export async function GET(req: NextRequest) {
         procoreAccessToken:  encryptToken(tokens.access_token),
         procoreRefreshToken: encryptToken(tokens.refresh_token),
         procoreTokenExpiry:  tokenExpiryDate(tokens.expires_in),
-        ...(defaultCompany ? { procoreCompanyId: defaultCompany.id } : {}),
+        ...(defaultCompanyId ? { procoreCompanyId: defaultCompanyId } : {}),
       },
     })
 
