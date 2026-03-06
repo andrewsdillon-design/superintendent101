@@ -207,7 +207,7 @@ function NewDailyLogForm() {
       const data = await res.json()
       if (res.ok) {
         if (!data.alreadyImported) setProjects(prev => [data.project, ...prev])
-        setLinkedProjectIds(prev => new Set([...prev, data.project.id]))
+        setLinkedProjectIds(prev => new Set(Array.from(prev).concat(data.project.id)))
         handleProjectChange(data.project.id)
         setShowProcoreModal(false)
       }
