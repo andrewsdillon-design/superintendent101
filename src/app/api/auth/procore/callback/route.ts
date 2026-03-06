@@ -9,7 +9,8 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const user = session?.user as any
   if (!user?.id) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    const base = process.env.NEXTAUTH_URL ?? req.url
+    return NextResponse.redirect(new URL('/login', base))
   }
 
   const { searchParams } = new URL(req.url)
@@ -44,9 +45,11 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    return NextResponse.redirect(new URL('/profile?procore=connected', req.url))
+    const base = process.env.NEXTAUTH_URL ?? req.url
+    return NextResponse.redirect(new URL('/profile?procore=connected', base))
   } catch (err) {
     console.error('[Procore callback]', err)
-    return NextResponse.redirect(new URL('/profile?procore=error', req.url))
+    const base = process.env.NEXTAUTH_URL ?? req.url
+    return NextResponse.redirect(new URL('/profile?procore=error', base))
   }
 }
