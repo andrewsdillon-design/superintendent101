@@ -51,6 +51,13 @@ model User {
   emailSmtpSecure Boolean      @default(true)
   emailSmtpUser   String?
   emailSmtpPassEnc String?     // AES-256 encrypted
+  // Push notifications
+  pushToken              String?
+  notifyDailyReminder    Boolean  @default(false)
+  notifyReminderHour     Int      @default(17)    // hour in UTC (17 = 5pm UTC)
+  // Scheduled reports
+  weeklyReportScheduled  Boolean  @default(false)
+  weeklyReportEmail      String?                  // override email; falls back to user.email
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -102,6 +109,7 @@ model Project {
   electricalSide String?       // e.g. "Left", "Right"
   createdAt      DateTime      @default(now())
   dailyLogs      DailyLog[]
+  shares         ProjectShare[]
 }
 
 enum ProjectStatus {
@@ -335,6 +343,19 @@ model ProcoreProjectLink {
   createdAt        DateTime @default(now())
 
   @@unique([userId, projectId])
+}
+
+// ─── Project Share Links (subcontractor read-only access) ─────────────────────
+
+model ProjectShare {
+  id        String    @id @default(cuid())
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  token     String    @unique @default(cuid())
+  label     String?   // e.g. "Shared with ABC Electrical"
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  viewCount Int       @default(0)
 }
 
 model BugReport {

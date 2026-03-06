@@ -11,7 +11,11 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { builderType: true, structureModel: true, onboarded: true, defaultProjectId: true, procoreAccessToken: true },
+    select: {
+      builderType: true, structureModel: true, onboarded: true, defaultProjectId: true,
+      procoreAccessToken: true, notifyDailyReminder: true, notifyReminderHour: true,
+      weeklyReportScheduled: true, weeklyReportEmail: true, email: true,
+    },
   })
 
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -22,6 +26,10 @@ export async function GET(req: NextRequest) {
     onboarded: user.onboarded,
     defaultProjectId: user.defaultProjectId,
     procoreConnected: !!user.procoreAccessToken,
+    notifyDailyReminder: user.notifyDailyReminder,
+    notifyReminderHour: user.notifyReminderHour,
+    weeklyReportScheduled: user.weeklyReportScheduled,
+    weeklyReportEmail: user.weeklyReportEmail ?? user.email,
   })
 }
 
@@ -31,9 +39,9 @@ export async function PATCH(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const { builderType, structureModel } = body
+  const { builderType, structureModel, notifyDailyReminder, notifyReminderHour, weeklyReportScheduled, weeklyReportEmail } = body
 
-  const data: Record<string, string> = {}
+  const data: Record<string, unknown> = {}
 
   if (builderType !== undefined) {
     if (!['RESIDENTIAL', 'COMMERCIAL'].includes(builderType)) {
@@ -49,10 +57,15 @@ export async function PATCH(req: NextRequest) {
     data.structureModel = structureModel
   }
 
+  if (notifyDailyReminder !== undefined) data.notifyDailyReminder = !!notifyDailyReminder
+  if (notifyReminderHour !== undefined) data.notifyReminderHour = Math.min(23, Math.max(0, parseInt(notifyReminderHour)))
+  if (weeklyReportScheduled !== undefined) data.weeklyReportScheduled = !!weeklyReportScheduled
+  if (weeklyReportEmail !== undefined) data.weeklyReportEmail = weeklyReportEmail?.trim() || null
+
   const user = await prisma.user.update({
     where: { id: userId },
     data,
-    select: { id: true, builderType: true, structureModel: true },
+    select: { id: true, builderType: true, structureModel: true, notifyDailyReminder: true, weeklyReportScheduled: true },
   })
 
   return NextResponse.json({ user })
