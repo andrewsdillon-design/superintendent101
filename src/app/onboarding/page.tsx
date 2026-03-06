@@ -149,7 +149,7 @@ export default function OnboardingPage() {
   async function handleFinish() {
     await fetch('/api/account/onboarded', { method: 'PATCH' })
     await updateSession()
-    router.push('/daily-logs/new')
+    window.location.href = '/daily-logs/new'
   }
 
   return (
