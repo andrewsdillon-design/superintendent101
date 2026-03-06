@@ -47,6 +47,26 @@ export async function GET(req: NextRequest) {
     } catch (e: any) {
       results.projects = { error: e.message }
     }
+
+    // Test 3: fetch work_logs for each linked project to verify logs were created
+    const links = await prisma.procoreProjectLink.findMany({ where: { userId } })
+    results.logCheck = {}
+    for (const link of links) {
+      const checks: any = {}
+      for (const logType of ['work_logs', 'manpower_logs', 'delivery_logs', 'inspection_logs', 'safety_violation_logs', 'notes_logs']) {
+        try {
+          const r = await fetch(
+            `${PROCORE_CONFIG.apiBase}/rest/v1.0/projects/${link.procoreProjectId}/${logType}?company_id=${link.procoreCompanyId}`,
+            { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } }
+          )
+          const body = await r.json()
+          checks[logType] = { status: r.status, count: Array.isArray(body) ? body.length : body }
+        } catch (e: any) {
+          checks[logType] = { error: e.message }
+        }
+      }
+      results.logCheck[`project_${link.procoreProjectId}`] = checks
+    }
   }
 
   return NextResponse.json(results)
