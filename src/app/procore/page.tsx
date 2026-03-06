@@ -178,7 +178,7 @@ export default function ProcorePage() {
     }
   }
 
-  async function handleSync(p: ProcoreProject) {
+  async function handleSync(p: ProcoreProject, clearFirst = false) {
     const linked = linkMap[p.id]
     if (!linked) return
     setSyncingId(p.id)
@@ -187,7 +187,7 @@ export default function ProcorePage() {
       const res = await fetch('/api/integrations/procore/sync-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: linked.localProjectId }),
+        body: JSON.stringify({ projectId: linked.localProjectId, clearFirst }),
       })
       const data = await res.json()
       if (res.ok) {
@@ -413,13 +413,20 @@ export default function ProcorePage() {
                             {importingId === p.id ? 'Importing...' : '↓ Import to ProFieldHub'}
                           </button>
                         ) : (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <button
                               onClick={() => handleSync(p)}
                               disabled={syncingId === p.id}
                               className="flex-1 text-xs border border-[#ff6b35]/50 text-[#ff6b35] hover:border-[#ff6b35] px-3 py-2 transition-colors disabled:opacity-40"
                             >
-                              {syncingId === p.id ? 'Syncing...' : '↑ Sync Logs to Procore'}
+                              {syncingId === p.id ? 'Syncing...' : '↑ Sync Logs'}
+                            </button>
+                            <button
+                              onClick={() => { if (confirm('This will delete all existing Procore log entries for this project and re-sync from ProFieldHub. Continue?')) handleSync(p, true) }}
+                              disabled={syncingId === p.id}
+                              className="flex-1 text-xs border border-red-500/40 text-red-400 hover:border-red-400 px-3 py-2 transition-colors disabled:opacity-40"
+                            >
+                              {syncingId === p.id ? 'Clearing...' : '↺ Clear & Re-sync'}
                             </button>
                             <Link
                               href={`/daily-logs?projectId=${linked.localProjectId}`}

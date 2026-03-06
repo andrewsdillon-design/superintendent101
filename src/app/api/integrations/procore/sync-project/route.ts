@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const userId = await getUserId(req)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { projectId } = await req.json()
+  const { projectId, clearFirst } = await req.json()
   if (!projectId) return NextResponse.json({ error: 'projectId required' }, { status: 400 })
 
   const [dbUser, link] = await Promise.all([
@@ -37,6 +37,34 @@ export async function POST(req: NextRequest) {
         procoreTokenExpiry:  tokenExpiryDate(tokens.expires_in),
       },
     })
+  }
+
+  // If clearFirst: delete all existing Procore log entries for this project
+  if (clearFirst) {
+    const base = `${process.env.PROCORE_API_BASE ?? 'https://api.procore.com'}/rest/v1.0/projects/${link.procoreProjectId}`
+    const qs = `?company_id=${link.procoreCompanyId}`
+    const clearTypes = ['work_logs', 'manpower_logs', 'delivery_logs', 'inspection_logs',
+                        'safety_violation_logs', 'notes_logs', 'equipment_logs', 'accident_logs', 'visitor_logs', 'weather_logs']
+    for (const type of clearTypes) {
+      try {
+        const r = await fetch(`${base}/${type}${qs}`, {
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        })
+        if (r.ok) {
+          const items: any[] = await r.json()
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              try {
+                await fetch(`${base}/${type}/${item.id}${qs}`, {
+                  method: 'DELETE',
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                })
+              } catch {}
+            }
+          }
+        }
+      } catch {}
+    }
   }
 
   // Get logs for this project (last 90 days, not archived)
