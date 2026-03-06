@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 // POST /api/admin/companies/[id]/apply-beta
-// Grants betaTester + DUST_LOGS to every current member of the company
+// Grants betaTester + PRO to every current member of the company
 export async function POST(_: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if ((session?.user as any)?.role !== 'ADMIN') {
@@ -20,7 +20,7 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
 
   await prisma.user.updateMany({
     where: { id: { in: userIds } },
-    data: { betaTester: true, subscription: 'DUST_LOGS' },
+    data: { betaTester: true, subscription: 'PRO' },
   })
 
   return NextResponse.json({ updated: userIds.length })

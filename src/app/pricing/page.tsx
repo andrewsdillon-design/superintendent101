@@ -59,7 +59,7 @@ export default function PricingPage() {
           </ul>
 
           <Link
-            href="/register?plan=DUST_LOGS"
+            href="/register?plan=PRO"
             className="btn-primary w-full text-base text-center block py-3"
           >
             Start Free Trial

@@ -24,15 +24,13 @@ export async function GET(request: NextRequest) {
     since = new Date(Date.now() - 30 * 86400000)
   }
 
-  const [logs, userCount, jobSiteCount, logCount] = await Promise.all([
+  const [logs, userCount] = await Promise.all([
     prisma.apiUsageLog.findMany({
       where: { createdAt: { gte: since } },
       include: { user: { select: { id: true, name: true, email: true, username: true, subscription: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.user.count(),
-    prisma.jobSite.count(),
-    prisma.audioLog.count(),
   ])
 
   // ── Overview ──────────────────────────────────────────────────────────
@@ -57,8 +55,6 @@ export async function GET(request: NextRequest) {
     byService,
     uniqueActiveUsers: uniqueUserIds.size,
     totalUsers: userCount,
-    totalJobSites: jobSiteCount,
-    totalLogs: logCount,
   }
 
   // ── Per-user breakdown ────────────────────────────────────────────────

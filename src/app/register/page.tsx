@@ -5,8 +5,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 const PLAN_LABELS: Record<string, { name: string; price: string; color: string }> = {
-  PRO: { name: 'Register as Mentor', price: '$39/mo', color: 'text-safety-yellow' },
-  DUST_LOGS: { name: 'Daily Logs Pro', price: '$9.99/mo (7-day free trial)', color: 'text-safety-orange' },
+  PRO: { name: 'Daily Logs Pro', price: '$9.99/mo (7-day free trial)', color: 'text-safety-orange' },
 }
 
 function RegisterForm() {
@@ -53,7 +52,7 @@ function RegisterForm() {
     if (!res.ok) {
       setError(data.error || 'Registration failed')
     } else {
-      const redirect = plan === 'PRO' || plan === 'DUST_LOGS'
+      const redirect = plan === 'PRO'
         ? '/login?registered=1&callbackUrl=/upgrade'
         : '/login?registered=1'
       router.push(redirect)

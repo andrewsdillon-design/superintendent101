@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { logGpt4oUsage } from '@/lib/usage'
-import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
+import { checkProAccess } from '@/lib/check-pro-access'
 
 const FIELD_AI_SYSTEM_PROMPT = `You are a construction field documentation AI for Superintendent101.
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const hasAccess = await checkDustLogsAccess(userId)
+  const hasAccess = await checkProAccess(userId)
   if (!hasAccess) {
     return NextResponse.json(
       { error: 'Trial expired. Please subscribe to continue.' },

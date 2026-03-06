@@ -11,8 +11,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     where: { id: params.id },
     select: {
       id: true, name: true, email: true, username: true, role: true,
-      subscription: true, isMentor: true, location: true, bio: true,
-      yearsExperience: true, createdAt: true, betaTester: true,
+      subscription: true, createdAt: true, betaTester: true,
     },
   })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -31,8 +30,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (subscription && ['FREE', 'PRO', 'DUST_LOGS'].includes(subscription)) data.subscription = subscription
   if (betaTester !== undefined) {
     data.betaTester = Boolean(betaTester)
-    // Granting beta = automatically upgrade to DUST_LOGS
-    if (betaTester === true) data.subscription = 'DUST_LOGS'
+    // Granting beta = automatically upgrade to PRO
+    if (betaTester === true) data.subscription = 'PRO'
   }
   if (password && typeof password === 'string' && password.length >= 8) {
     data.passwordHash = await bcrypt.hash(password, 12)

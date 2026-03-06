@@ -14,5 +14,4 @@ export function getStripe(): Stripe {
 
 export const STRIPE_PRICES = {
   PRO: process.env.STRIPE_PRICE_PRO!,
-  DUST_LOGS: process.env.STRIPE_PRICE_DUST_LOGS!,
 }

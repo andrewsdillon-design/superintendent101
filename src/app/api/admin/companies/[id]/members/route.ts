@@ -75,7 +75,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         username,
         name: name?.trim() || null,
         passwordHash,
-        subscription: company.grantsBetaTester ? 'DUST_LOGS' : 'FREE',
+        subscription: company.grantsBetaTester ? 'PRO' : 'FREE',
         betaTester: company.grantsBetaTester,
       },
     })
@@ -103,7 +103,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!accountCreated && company.grantsBetaTester) {
     await prisma.user.update({
       where: { id: user.id },
-      data: { betaTester: true, subscription: 'DUST_LOGS' },
+      data: { betaTester: true, subscription: 'PRO' },
     })
   }
 

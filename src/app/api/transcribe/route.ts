@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { toFile } from 'openai'
 import { logWhisperUsage } from '@/lib/usage'
-import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
+import { checkProAccess } from '@/lib/check-pro-access'
 
 // Whisper supports: mp3, mp4, mpeg, mpga, m4a, wav, webm, ogg, flac
 const ALLOWED_TYPES: Record<string, string> = {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const hasAccess = await checkDustLogsAccess(userId)
+  const hasAccess = await checkProAccess(userId)
   if (!hasAccess) {
     return NextResponse.json(
       { error: 'Trial expired. Please subscribe to continue.' },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { pushLogToNotion, findBestDatabase } from '@/lib/notion'
-import { checkDustLogsAccess } from '@/lib/check-dust-logs-access'
+import { checkProAccess } from '@/lib/check-pro-access'
 
 // Full pipeline: receives structured log + pushes to user's Notion workspace.
 // No data is stored on our system — Notion is the only destination.
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const hasAccess = await checkDustLogsAccess(userId)
+  const hasAccess = await checkProAccess(userId)
   if (!hasAccess) {
     return NextResponse.json(
       { error: 'Trial expired. Please subscribe to continue.' },

@@ -16,23 +16,11 @@ model User {
   username        String       @unique
   passwordHash    String?
   name            String?
-  avatarUrl       String?
-  bio             String?
-  location        String?
-  skills          String[]
-  yearsExperience Int?
   role            Role         @default(MEMBER)
-  isMentor        Boolean      @default(false)
-  mentorBio       String?
-  hourlyRate      Decimal?
   subscription    Subscription @default(FREE)
   trialEndsAt     DateTime?
   stripeCustomerId String?
   stripeSubId      String?
-  walletAddress    String?  // Base network wallet address
-  // Integration tokens (encrypted at rest)
-  notionToken     String?
-  notionDbId      String?
   // Procore OAuth (tokens encrypted at rest)
   procoreAccessToken  String?
   procoreRefreshToken String?
@@ -62,14 +50,6 @@ model User {
   updatedAt       DateTime     @updatedAt
 
   projects         Project[]
-  posts            Post[]
-  comments         Comment[]
-  likes            Like[]
-  messagesSent     Message[]  @relation("SentMessages")
-  messagesReceived Message[]  @relation("ReceivedMessages")
-  bookings         Booking[]  @relation("MentorBookings")
-  audioLogs        AudioLog[]
-  jobSites         JobSite[]
   apiUsageLogs     ApiUsageLog[]
   dailyLogs        DailyLog[]
   companyMemberships CompanyMember[]
@@ -119,135 +99,6 @@ enum ProjectStatus {
   ON_HOLD
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  content   String   @db.Text
-  tags      String[]
-  type      PostType @default(DISCUSSION)
-  viewCount Int      @default(0)
-  createdAt DateTime @default(now())
-  comments  Comment[]
-  likes     Like[]
-}
-
-enum PostType {
-  DISCUSSION
-  LESSON_LEARNED
-  SAFETY_OBSERVATION
-  TIP
-  STORY
-}
-
-model Comment {
-  id        String   @id @default(cuid())
-  postId    String
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-}
-
-model Like {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId String
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, postId])
-}
-
-model Message {
-  id         String   @id @default(cuid())
-  senderId   String
-  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiverId String
-  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  content    String   @db.Text
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
-}
-
-model Booking {
-  id              String        @id @default(cuid())
-  mentorId        String
-  mentor          User          @relation("MentorBookings", fields: [mentorId], references: [id])
-  clientId        String
-  scheduledAt     DateTime
-  durationMinutes Int           @default(60)
-  notes           String?
-  hourlyRate      Decimal
-  totalPrice      Decimal
-  status          BookingStatus @default(PENDING)
-  createdAt       DateTime      @default(now())
-  escrow          Escrow?
-}
-
-model Escrow {
-  id         String       @id @default(cuid())
-  bookingId  String       @unique
-  booking    Booking      @relation(fields: [bookingId], references: [id])
-  txHash     String?
-  amount     Decimal
-  fee        Decimal
-  status     EscrowStatus @default(PENDING)
-  createdAt  DateTime     @default(now())
-  settledAt  DateTime?
-}
-
-enum EscrowStatus {
-  PENDING
-  FUNDED
-  RELEASED
-  REFUNDED
-  DISPUTED
-}
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  COMPLETED
-  CANCELLED
-}
-
-model AudioLog {
-  id          String              @id @default(cuid())
-  userId      String
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  audioUrl    String
-  transcript  String?             @db.Text
-  status      TranscriptionStatus @default(PENDING)
-  projectName String?
-  address     String?
-  tags        String[]
-  duration    Int?
-  createdAt   DateTime            @default(now())
-}
-
-enum TranscriptionStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-model JobSite {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  address      String?
-  permitNumber String?
-  webPortalId  String?
-  portalType   String?
-  jobType      String?
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
 
 model ApiUsageLog {
   id            String   @id @default(cuid())

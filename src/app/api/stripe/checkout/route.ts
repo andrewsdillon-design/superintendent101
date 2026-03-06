@@ -13,13 +13,11 @@ export async function POST(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const tier = searchParams.get('tier')
-  if (tier !== 'PRO' && tier !== 'DUST_LOGS') {
+  if (tier !== 'PRO') {
     return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
   }
 
-  const priceId = tier === 'PRO'
-    ? process.env.STRIPE_PRICE_PRO
-    : process.env.STRIPE_PRICE_DAILY_LOGS
+  const priceId = process.env.STRIPE_PRICE_PRO
 
   if (!priceId) {
     return NextResponse.json({ error: 'Stripe price not configured' }, { status: 500 })

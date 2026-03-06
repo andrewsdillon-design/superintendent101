@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
       const userId = session.metadata?.userId
-      const tier = session.metadata?.tier as 'PRO' | 'DUST_LOGS' | undefined
+      const tier = session.metadata?.tier as 'PRO' | undefined
       const subId = session.subscription as string | null
 
       if (userId && tier) {

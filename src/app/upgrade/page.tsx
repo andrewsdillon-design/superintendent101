@@ -32,7 +32,7 @@ export default function UpgradePage() {
   const handleUpgrade = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/stripe/checkout?tier=DUST_LOGS', { method: 'POST' })
+      const res = await fetch('/api/stripe/checkout?tier=PRO', { method: 'POST' })
       const data = await res.json()
       if (data.url) {
         router.push(data.url)
