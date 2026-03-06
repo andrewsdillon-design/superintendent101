@@ -80,7 +80,12 @@ function ProfileContent() {
           // Load companies
           fetch('/api/integrations/procore/companies')
             .then(r => r.json())
-            .then(d => d.companies && setProcoreCompanies(d.companies))
+            .then(d => {
+              if (d.companies) {
+                setProcoreCompanies(d.companies)
+                if (d.companies.length >= 1 && !d.companyId) setSelectedCompanyId(d.companies[0].id)
+              }
+            })
             .catch(() => {})
         }
       })
@@ -576,8 +581,9 @@ function ProfileContent() {
                 {procoreLoading ? 'Connecting...' : 'Connect Procore'}
               </button>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs text-safety-green font-bold">● CONNECTED</span>
+                <Link href="/procore" className="text-xs text-[#ff6b35] hover:underline font-semibold">Open Procore Dashboard →</Link>
                 <button
                   onClick={handleProcoreDisconnect}
                   className="text-xs text-gray-500 hover:text-red-400 underline"

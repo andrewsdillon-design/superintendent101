@@ -64,5 +64,7 @@ export const config = {
     '/company/:path*',
     '/onboarding/:path*',
     '/onboarding',
+    '/procore/:path*',
+    '/procore',
   ],
 }
