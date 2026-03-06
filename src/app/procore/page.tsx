@@ -62,6 +62,12 @@ export default function ProcorePage() {
   const [syncingId, setSyncingId] = useState<number | null>(null)
   const [syncResults, setSyncResults] = useState<Record<number, string>>({})
 
+  // Synced logs viewer
+  const [logsProject, setLogsProject] = useState<{ localId: string; name: string } | null>(null)
+  const [syncedLogs, setSyncedLogs] = useState<Record<string, any[]>>({})
+  const [loadingLogs, setLoadingLogs] = useState(false)
+  const [logsError, setLogsError] = useState('')
+
   // Documents browser
   const [docsProject, setDocsProject] = useState<{ procoreId: number; localId: string; name: string } | null>(null)
   const [docs, setDocs] = useState<ProcoreDoc[]>([])
@@ -194,6 +200,19 @@ export default function ProcorePage() {
       setSyncResults(prev => ({ ...prev, [p.id]: 'Network error' }))
     }
     setSyncingId(null)
+  }
+
+  async function openLogs(p: ProcoreProject, localId: string) {
+    setLogsProject({ localId, name: p.name })
+    setSyncedLogs({})
+    setLogsError('')
+    setLoadingLogs(true)
+    try {
+      const d = await fetch(`/api/integrations/procore/logs?projectId=${localId}`).then(r => r.json())
+      if (d.error) { setLogsError(d.error); return }
+      setSyncedLogs(d.logs ?? {})
+    } catch { setLogsError('Failed to load logs') }
+    setLoadingLogs(false)
   }
 
   async function openDocs(p: ProcoreProject, localId: string) {
@@ -409,6 +428,12 @@ export default function ProcorePage() {
                               View Logs
                             </Link>
                             <button
+                              onClick={() => openLogs(p, linked.localProjectId)}
+                              className="flex-1 text-xs border border-blueprint-grid text-gray-400 hover:border-neon-cyan hover:text-neon-cyan px-3 py-2 transition-colors"
+                            >
+                              📋 Procore Logs
+                            </button>
+                            <button
                               onClick={() => openDocs(p, linked.localProjectId)}
                               className="flex-1 text-xs border border-blueprint-grid text-gray-400 hover:border-[#ff6b35] hover:text-[#ff6b35] px-3 py-2 transition-colors"
                             >
@@ -430,6 +455,59 @@ export default function ProcorePage() {
           </>
         )}
       </main>
+      {/* Synced Logs Viewer Modal */}
+      {logsProject && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-blueprint-bg border border-blueprint-grid w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="p-4 border-b border-blueprint-grid flex justify-between items-center">
+              <div>
+                <h2 className="font-display text-lg font-bold text-neon-cyan">PROCORE DAILY LOGS</h2>
+                <p className="text-xs text-gray-400">{logsProject.name} — data confirmed in Procore</p>
+              </div>
+              <button onClick={() => setLogsProject(null)} className="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingLogs ? (
+                <p className="text-gray-400 text-sm">Loading from Procore...</p>
+              ) : logsError ? (
+                <p className="text-red-400 text-sm">{logsError}</p>
+              ) : Object.keys(syncedLogs).length === 0 ? (
+                <p className="text-gray-500 text-sm">No logs found in Procore for this project yet.</p>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(syncedLogs).map(([type, entries]) => (
+                    <div key={type}>
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-[#ff6b35] mb-2">
+                        {type.replace(/_/g, ' ').replace(' logs', '')} ({entries.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {entries.map((entry: any, i: number) => (
+                          <div key={i} className="border border-blueprint-grid p-3 text-sm">
+                            <div className="flex justify-between items-start mb-1">
+                              <span className="text-neon-cyan text-xs font-semibold">
+                                {entry.date || entry.log_date || entry.created_at?.split('T')[0] || '—'}
+                              </span>
+                              {entry.party_name && <span className="text-xs text-gray-400">{entry.party_name}</span>}
+                              {entry.total !== undefined && <span className="text-xs text-white font-bold">{entry.total} workers</span>}
+                            </div>
+                            {(entry.notes || entry.description) && (
+                              <p className="text-gray-300 whitespace-pre-wrap text-xs leading-relaxed">
+                                {entry.notes || entry.description}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Documents Browser Modal */}
       {docsProject && !commentDoc && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
