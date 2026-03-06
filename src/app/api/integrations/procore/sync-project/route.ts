@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     try {
       await pushDailyLogToProcore(accessToken, link.procoreCompanyId, link.procoreProjectId, {
         date:          log.date,
+        weather:       log.weather,
         crewCounts:    log.crewCounts as Record<string, number>,
         workPerformed: log.workPerformed,
         deliveries:    log.deliveries,
@@ -60,6 +61,9 @@ export async function POST(req: NextRequest) {
         issues:        log.issues,
         safetyNotes:   log.safetyNotes,
         rfi:           log.rfi,
+        equipment:     log.equipment ?? '',
+        accidents:     log.accidents ?? '',
+        visitors:      log.visitors ?? '',
       })
       synced++
     } catch (err: any) {

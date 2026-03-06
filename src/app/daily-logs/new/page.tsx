@@ -100,6 +100,9 @@ function NewDailyLogForm() {
   const [issues, setIssues] = useState('')
   const [rfi, setRfi] = useState('')
   const [safetyNotes, setSafetyNotes] = useState('')
+  const [equipment, setEquipment] = useState('')
+  const [accidents, setAccidents] = useState('')
+  const [visitors, setVisitors] = useState('')
   const [address, setAddress] = useState('')
   const [lotNumber, setLotNumber] = useState('')
   const [permitNumber, setPermitNumber] = useState('')
@@ -504,6 +507,9 @@ function NewDailyLogForm() {
           issues,
           rfi,
           safetyNotes,
+          equipment,
+          accidents,
+          visitors,
           address: address || null,
           lotNumber: isResidential ? (lotNumber || null) : null,
           permitNumber: permitNumber || null,
@@ -1013,8 +1019,44 @@ function NewDailyLogForm() {
               value={safetyNotes}
               onChange={e => setSafetyNotes(e.target.value)}
               rows={3}
-              placeholder="Safety observations, incidents, toolbox topics..."
+              placeholder="Safety observations, toolbox topics, violations..."
               className="w-full bg-blueprint-bg border border-red-500/30 p-2 text-white focus:outline-none focus:border-red-400 resize-none text-sm"
+            />
+          </div>
+
+          {/* Accidents / Incidents */}
+          <div>
+            <label className="text-xs text-red-400 uppercase tracking-wide block mb-1">⚠ Accidents / Incidents</label>
+            <textarea
+              value={accidents}
+              onChange={e => setAccidents(e.target.value)}
+              rows={2}
+              placeholder="Any accidents, injuries, or near-misses..."
+              className="w-full bg-blueprint-bg border border-red-500/30 p-2 text-white focus:outline-none focus:border-red-400 resize-none text-sm"
+            />
+          </div>
+
+          {/* Equipment */}
+          <div>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Equipment</label>
+            <textarea
+              value={equipment}
+              onChange={e => setEquipment(e.target.value)}
+              rows={2}
+              placeholder="Equipment on site, hours used, any issues..."
+              className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan resize-none text-sm"
+            />
+          </div>
+
+          {/* Visitors */}
+          <div>
+            <label className="text-xs text-gray-400 uppercase tracking-wide block mb-1">Visitors</label>
+            <textarea
+              value={visitors}
+              onChange={e => setVisitors(e.target.value)}
+              rows={2}
+              placeholder="Owner, architect, inspector, or other site visitors..."
+              className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan resize-none text-sm"
             />
           </div>
 

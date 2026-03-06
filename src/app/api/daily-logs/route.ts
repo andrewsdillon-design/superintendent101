@@ -55,6 +55,9 @@ export async function POST(req: NextRequest) {
     inspections,
     issues,
     safetyNotes,
+    equipment,
+    accidents,
+    visitors,
     photoUrls,
     signatureUrl,
     transcript,
@@ -109,6 +112,9 @@ export async function POST(req: NextRequest) {
           issues: appendText(existing.issues, issues),
           safetyNotes: appendText(existing.safetyNotes, safetyNotes),
           rfi: appendText(existing.rfi, rfi),
+          equipment: appendText(existing.equipment, equipment),
+          accidents: appendText(existing.accidents, accidents),
+          visitors: appendText(existing.visitors, visitors),
           photoUrls: [...((existing.photoUrls as string[]) ?? []), ...(photoUrls ?? [])],
           address: address?.trim() ? address : existing.address,
           lotNumber: lotNumber?.trim() ? lotNumber : existing.lotNumber,
@@ -136,6 +142,9 @@ export async function POST(req: NextRequest) {
       inspections: inspections ?? '',
       issues: issues ?? '',
       safetyNotes: safetyNotes ?? '',
+      equipment: equipment ?? '',
+      accidents: accidents ?? '',
+      visitors: visitors ?? '',
       photoUrls: photoUrls ?? [],
       signatureUrl: signatureUrl ?? null,
       transcript: transcript ?? null,
@@ -157,7 +166,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ log }, { status: 201 })
 }
 
-async function pushToProcore(userId: string, log: { id: string; projectId: string | null; date: Date; crewCounts: any; workPerformed: string; deliveries: string; inspections: string; issues: string; safetyNotes: string; rfi: string }) {
+async function pushToProcore(userId: string, log: { id: string; projectId: string | null; date: Date; weather: string; crewCounts: any; workPerformed: string; deliveries: string; inspections: string; issues: string; safetyNotes: string; rfi: string; equipment: string; accidents: string; visitors: string }) {
   if (!log.projectId) return
 
   const [dbUser, link] = await Promise.all([
@@ -189,6 +198,7 @@ async function pushToProcore(userId: string, log: { id: string; projectId: strin
 
   await pushDailyLogToProcore(accessToken, link.procoreCompanyId, link.procoreProjectId, {
     date:          log.date,
+    weather:       log.weather,
     crewCounts:    log.crewCounts as Record<string, number>,
     workPerformed: log.workPerformed,
     deliveries:    log.deliveries,
@@ -196,5 +206,8 @@ async function pushToProcore(userId: string, log: { id: string; projectId: strin
     issues:        log.issues,
     safetyNotes:   log.safetyNotes,
     rfi:           log.rfi,
+    equipment:     log.equipment,
+    accidents:     log.accidents,
+    visitors:      log.visitors,
   })
 }

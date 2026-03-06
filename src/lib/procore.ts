@@ -94,6 +94,7 @@ export function tokenExpiryDate(expiresIn: number): Date {
 
 interface PushPayload {
   date: Date
+  weather: string
   crewCounts: Record<string, number>
   workPerformed: string
   deliveries: string
@@ -101,6 +102,9 @@ interface PushPayload {
   issues: string
   safetyNotes: string
   rfi: string
+  equipment: string
+  accidents: string
+  visitors: string
 }
 
 export async function pushDailyLogToProcore(
@@ -114,49 +118,96 @@ export async function pushDailyLogToProcore(
   const qs = `?company_id=${companyId}`
   const pushed: string[] = []
 
-  // Work performed
-  if (log.workPerformed?.trim()) {
-    await procoreApi(accessToken, `${base}/work_logs${qs}`, {
+  async function push(endpoint: string, body: object) {
+    await procoreApi(accessToken, `${base}/${endpoint}${qs}`, {
       method: 'POST',
-      body: JSON.stringify({ work_log: { date: dateStr, notes: log.workPerformed } }),
+      body: JSON.stringify(body),
     })
+  }
+
+  // Weather → Observed Weather Conditions
+  if (log.weather?.trim()) {
+    await push('weather_logs', { weather_log: { date: dateStr, notes: log.weather } })
+    pushed.push('weather')
+  }
+
+  // Work performed → Scheduled Work
+  if (log.workPerformed?.trim()) {
+    await push('work_logs', { work_log: { date: dateStr, notes: log.workPerformed } })
     pushed.push('work')
   }
 
-  // Crew / manpower — one entry per trade
+  // Crew / Manpower — one entry per trade
   for (const [trade, count] of Object.entries(log.crewCounts ?? {})) {
     if (Number(count) > 0) {
-      await procoreApi(accessToken, `${base}/manpower_logs${qs}`, {
-        method: 'POST',
-        body: JSON.stringify({ manpower_log: { date: dateStr, party_name: trade, total: Number(count) } }),
-      })
+      await push('manpower_logs', { manpower_log: { date: dateStr, party_name: trade, total: Number(count) } })
     }
   }
   if (Object.keys(log.crewCounts ?? {}).length > 0) pushed.push('crew')
 
   // Deliveries
   if (log.deliveries?.trim()) {
-    await procoreApi(accessToken, `${base}/delivery_logs${qs}`, {
-      method: 'POST',
-      body: JSON.stringify({ delivery_log: { date: dateStr, description: log.deliveries } }),
-    })
+    await push('delivery_logs', { delivery_log: { date: dateStr, description: log.deliveries } })
     pushed.push('deliveries')
   }
 
-  // Notes: issues, safety, RFI, inspections — each as a separate notes entry
-  const noteSections = [
-    { label: 'Inspections', content: log.inspections },
-    { label: 'Issues / Delays', content: log.issues },
-    { label: 'Safety Notes', content: log.safetyNotes },
-    { label: 'RFIs', content: log.rfi },
-  ]
-  for (const section of noteSections) {
-    if (section.content?.trim()) {
-      await procoreApi(accessToken, `${base}/notes_logs${qs}`, {
-        method: 'POST',
-        body: JSON.stringify({ notes_log: { date: dateStr, notes: `${section.label}:\n${section.content}` } }),
+  // Inspections → Inspections log type
+  if (log.inspections?.trim()) {
+    await push('inspection_logs', { inspection_log: { date: dateStr, notes: log.inspections } })
+    pushed.push('inspections')
+  }
+
+  // Issues / Delays → Notes
+  if (log.issues?.trim()) {
+    await push('notes_logs', { notes_log: { date: dateStr, notes: `Issues / Delays:\n${log.issues}` } })
+    pushed.push('issues')
+  }
+
+  // RFIs → Notes
+  if (log.rfi?.trim()) {
+    await push('notes_logs', { notes_log: { date: dateStr, notes: `RFIs:\n${log.rfi}` } })
+    pushed.push('rfi')
+  }
+
+  // Safety Notes → Safety Violations
+  if (log.safetyNotes?.trim()) {
+    await push('safety_violation_logs', { safety_violation_log: { date: dateStr, notes: log.safetyNotes } })
+    pushed.push('safety')
+  }
+
+  // Equipment → Equipment log
+  if (log.equipment?.trim()) {
+    await push('equipment_logs', { equipment_log: { date: dateStr, notes: log.equipment } })
+    pushed.push('equipment')
+  }
+
+  // Accidents → Accident log
+  if (log.accidents?.trim()) {
+    await push('accident_logs', { accident_log: { date: dateStr, notes: log.accidents } })
+    pushed.push('accidents')
+  }
+
+  // Visitors → Visitor log
+  if (log.visitors?.trim()) {
+    await push('visitor_logs', { visitor_log: { date: dateStr, notes: log.visitors } })
+    pushed.push('visitors')
+  }
+
+  // Safety / Accidents → also create a Procore Observation for tracking
+  const safetyText = [log.accidents?.trim(), log.safetyNotes?.trim()].filter(Boolean).join('\n')
+  if (safetyText) {
+    try {
+      await push('observations/items', {
+        item: {
+          name: `Safety – ${dateStr}`,
+          type: 'safety',
+          status: 'initiated',
+          description: safetyText,
+        },
       })
-      pushed.push(section.label.toLowerCase())
+      pushed.push('observation')
+    } catch {
+      // Observations may not be enabled on all projects — non-fatal
     }
   }
 

@@ -60,6 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: { logId: stri
     link.procoreProjectId,
     {
       date:          log.date,
+      weather:       log.weather ?? '',
       crewCounts:    log.crewCounts as Record<string, number>,
       workPerformed: log.workPerformed,
       deliveries:    log.deliveries,
@@ -67,6 +68,9 @@ export async function POST(req: NextRequest, { params }: { params: { logId: stri
       issues:        log.issues,
       safetyNotes:   log.safetyNotes,
       rfi:           log.rfi,
+      equipment:     (log as any).equipment ?? '',
+      accidents:     (log as any).accidents ?? '',
+      visitors:      (log as any).visitors ?? '',
     },
   )
 

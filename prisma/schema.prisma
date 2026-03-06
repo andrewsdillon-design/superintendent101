@@ -139,6 +139,9 @@ model DailyLog {
   photoUrls     String[] @default([])
   signatureUrl  String?
   transcript    String?  @db.Text        // raw voice transcript for reference
+  equipment     String   @db.Text @default("")  // equipment on site → Procore equipment_logs
+  accidents     String   @db.Text @default("")  // accidents / incidents → Procore accident_logs + Observations
+  visitors      String   @db.Text @default("")  // visitors on site → Procore visitor_logs
   archived      Boolean  @default(false)
   address       String?                  // job site address for this log
   lotNumber     String?                  // residential lot number
