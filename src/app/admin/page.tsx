@@ -72,6 +72,12 @@ export default function AdminPage() {
     DUST_LOGS: 'text-safety-orange',
   }
 
+  const subLabel: Record<string, string> = {
+    FREE: 'Free',
+    PRO: 'Daily Logs Pro',
+    DUST_LOGS: 'Daily Logs Pro',
+  }
+
   const roleColor: Record<string, string> = {
     MEMBER: 'text-gray-300',
     MENTOR: 'text-safety-green',
@@ -198,7 +204,7 @@ export default function AdminPage() {
                     </td>
                     <td className="py-3 pr-4 text-gray-300">@{u.username}</td>
                     <td className={`py-3 pr-4 font-semibold ${roleColor[u.role] ?? ''}`}>{u.role}</td>
-                    <td className={`py-3 pr-4 font-semibold ${subColor[u.subscription] ?? ''}`}>{u.subscription}</td>
+                    <td className={`py-3 pr-4 font-semibold ${subColor[u.subscription] ?? ''}`}>{subLabel[u.subscription] ?? u.subscription}</td>
                     <td className="py-3 pr-4 text-gray-400 text-xs">
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
