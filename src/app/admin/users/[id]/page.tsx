@@ -12,10 +12,6 @@ interface UserDetail {
   role: string
   subscription: string
   betaTester: boolean
-  isMentor: boolean
-  location: string | null
-  bio: string | null
-  yearsExperience: number | null
   createdAt: string
 }
 
@@ -140,10 +136,7 @@ export default function AdminUserPage() {
               <p className="text-gray-400 text-sm">{user.email} • @{user.username}</p>
               <p className="text-gray-500 text-xs mt-1">
                 Joined {new Date(user.createdAt).toLocaleDateString()}
-                {user.location ? ` • ${user.location}` : ''}
-                {user.yearsExperience ? ` • ${user.yearsExperience}yr exp` : ''}
               </p>
-              {user.bio && <p className="text-gray-300 text-sm mt-3">{user.bio}</p>}
             </div>
             {user.betaTester && (
               <span className="text-xs font-bold text-safety-green border border-safety-green/40 px-2 py-1 rounded">
