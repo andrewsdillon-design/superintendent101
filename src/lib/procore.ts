@@ -116,7 +116,7 @@ export async function pushDailyLogToProcore(
 
   // Work performed
   if (log.workPerformed?.trim()) {
-    await procoreApi(accessToken, `${base}/daily_logs/work_logs${qs}`, {
+    await procoreApi(accessToken, `${base}/work_logs${qs}`, {
       method: 'POST',
       body: JSON.stringify({ work_log: { date: dateStr, notes: log.workPerformed } }),
     })
@@ -126,7 +126,7 @@ export async function pushDailyLogToProcore(
   // Crew / manpower — one entry per trade
   for (const [trade, count] of Object.entries(log.crewCounts ?? {})) {
     if (Number(count) > 0) {
-      await procoreApi(accessToken, `${base}/daily_logs/manpower_logs${qs}`, {
+      await procoreApi(accessToken, `${base}/manpower_logs${qs}`, {
         method: 'POST',
         body: JSON.stringify({ manpower_log: { date: dateStr, party_name: trade, total: Number(count) } }),
       })
@@ -136,7 +136,7 @@ export async function pushDailyLogToProcore(
 
   // Deliveries
   if (log.deliveries?.trim()) {
-    await procoreApi(accessToken, `${base}/daily_logs/delivery_logs${qs}`, {
+    await procoreApi(accessToken, `${base}/delivery_logs${qs}`, {
       method: 'POST',
       body: JSON.stringify({ delivery_log: { date: dateStr, description: log.deliveries } }),
     })
@@ -152,7 +152,7 @@ export async function pushDailyLogToProcore(
   ]
   for (const section of noteSections) {
     if (section.content?.trim()) {
-      await procoreApi(accessToken, `${base}/daily_logs/notes_logs${qs}`, {
+      await procoreApi(accessToken, `${base}/notes_logs${qs}`, {
         method: 'POST',
         body: JSON.stringify({ notes_log: { date: dateStr, notes: `${section.label}:\n${section.content}` } }),
       })
