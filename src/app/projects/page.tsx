@@ -43,6 +43,7 @@ export default function ProjectsPage() {
   const [form, setForm] = useState(BLANK_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -139,6 +140,24 @@ export default function ProjectsPage() {
       setError('Network error.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = async (project: Project) => {
+    if (!confirm(`Delete "${project.title}"? Its daily logs will be kept but unlinked from this project.`)) return
+    setDeletingId(project.id)
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setProjects(prev => prev.filter(p => p.id !== project.id))
+      } else {
+        const data = await res.json()
+        alert(data.error ?? 'Failed to delete project.')
+      }
+    } catch {
+      alert('Network error.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -287,6 +306,13 @@ export default function ProjectsPage() {
                       className="text-xs text-gray-400 border border-blueprint-grid hover:border-gray-400 px-3 py-1.5 transition-colors flex-1"
                     >
                       🔗 Share
+                    </button>
+                    <button
+                      onClick={() => handleDelete(project)}
+                      disabled={deletingId === project.id}
+                      className="text-xs text-red-400 border border-red-400/30 hover:border-red-400 px-3 py-1.5 transition-colors disabled:opacity-40"
+                    >
+                      {deletingId === project.id ? '...' : 'Delete'}
                     </button>
                   </div>
                 </div>

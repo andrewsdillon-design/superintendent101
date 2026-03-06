@@ -80,6 +80,16 @@ function NewDailyLogForm() {
   const [newProjectName, setNewProjectName] = useState('')
   const [savingProject, setSavingProject] = useState(false)
 
+  // Procore import
+  const [procoreConnected, setProcoreConnected] = useState(false)
+  const [linkedProjectIds, setLinkedProjectIds] = useState<Set<string>>(new Set())
+  const [showProcoreModal, setShowProcoreModal] = useState(false)
+  const [procoreCompanies, setProcoreCompanies] = useState<any[]>([])
+  const [procoreCompanyId, setProcoreCompanyId] = useState<number | null>(null)
+  const [procoreImportList, setProcoreImportList] = useState<any[]>([])
+  const [loadingProcoreProjects, setLoadingProcoreProjects] = useState(false)
+  const [importingId, setImportingId] = useState<number | null>(null)
+
   // Form fields
   const [date, setDate] = useState(todayStr())
   const [weather, setWeather] = useState<Weather | ''>('')
@@ -126,6 +136,16 @@ function NewDailyLogForm() {
       .then(r => r.json())
       .then(d => setProjects(d.projects ?? []))
       .catch(() => {})
+    fetch('/api/integrations/procore')
+      .then(r => r.json())
+      .then(d => { if (d.connected) setProcoreConnected(true) })
+      .catch(() => {})
+    fetch('/api/integrations/procore/link')
+      .then(r => r.json())
+      .then(d => {
+        if (d.links) setLinkedProjectIds(new Set(d.links.map((l: any) => l.projectId)))
+      })
+      .catch(() => {})
   }, [])
 
   // Auto-select default project if no projectId from URL
@@ -147,6 +167,52 @@ function NewDailyLogForm() {
     if (!p) return
     if (p.address && !address) setAddress(p.address)
     if (p.permitNumber && !permitNumber) setPermitNumber(p.permitNumber)
+  }
+
+  // ── Procore import ────────────────────────────────────────────────────
+  async function openProcoreModal() {
+    setShowProcoreModal(true)
+    if (procoreCompanies.length === 0) {
+      const d = await fetch('/api/integrations/procore/companies').then(r => r.json())
+      setProcoreCompanies(d.companies ?? [])
+      if (d.companies?.length === 1) {
+        setProcoreCompanyId(d.companies[0].id)
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!procoreCompanyId) return
+    setLoadingProcoreProjects(true)
+    fetch(`/api/integrations/procore/projects?companyId=${procoreCompanyId}`)
+      .then(r => r.json())
+      .then(d => setProcoreImportList(d.projects ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingProcoreProjects(false))
+  }, [procoreCompanyId])
+
+  async function handleProcoreImport(procoreProject: any) {
+    setImportingId(procoreProject.id)
+    try {
+      const res = await fetch('/api/integrations/procore/import-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          procoreProjectId: procoreProject.id,
+          procoreCompanyId,
+          name: procoreProject.name,
+          address: procoreProject.address ?? null,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        if (!data.alreadyImported) setProjects(prev => [data.project, ...prev])
+        setLinkedProjectIds(prev => new Set([...prev, data.project.id]))
+        handleProjectChange(data.project.id)
+        setShowProcoreModal(false)
+      }
+    } catch {}
+    setImportingId(null)
   }
 
   // ── Quick-create project ──────────────────────────────────────────────
@@ -687,24 +753,38 @@ function NewDailyLogForm() {
           <div>
             <label className="text-xs text-gray-400 uppercase tracking-wide block mb-2">Project</label>
             {!showNewProject ? (
-              <div className="flex gap-2">
-                <select
-                  value={projectId}
-                  onChange={e => handleProjectChange(e.target.value)}
-                  className="flex-1 bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
-                >
-                  <option value="">No project</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowNewProject(true)}
-                  className="btn-secondary text-xs px-3 whitespace-nowrap"
-                >
-                  + New
-                </button>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <select
+                    value={projectId}
+                    onChange={e => handleProjectChange(e.target.value)}
+                    className="flex-1 bg-blueprint-bg border border-blueprint-grid p-2 text-white focus:outline-none focus:border-neon-cyan text-sm"
+                  >
+                    <option value="">No project</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewProject(true)}
+                    className="btn-secondary text-xs px-3 whitespace-nowrap"
+                  >
+                    + New
+                  </button>
+                  {procoreConnected && (
+                    <button
+                      type="button"
+                      onClick={openProcoreModal}
+                      className="text-xs px-3 border border-[#ff6b35]/40 text-[#ff6b35] hover:border-[#ff6b35] transition-colors whitespace-nowrap"
+                    >
+                      From Procore
+                    </button>
+                  )}
+                </div>
+                {projectId && linkedProjectIds.has(projectId) && (
+                  <p className="text-xs text-[#ff6b35]/80">↑ Syncs to Procore on save</p>
+                )}
               </div>
             ) : (
               <div className="flex gap-2">
@@ -1024,6 +1104,63 @@ function NewDailyLogForm() {
           </div>
         </form>}
       </main>
+
+      {/* Procore Import Modal */}
+      {showProcoreModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-blueprint-bg border border-blueprint-grid w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="p-5 border-b border-blueprint-grid flex justify-between items-center">
+              <div>
+                <h2 className="font-display text-lg font-bold text-[#ff6b35]">IMPORT FROM PROCORE</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Select a Procore project to import and link</p>
+              </div>
+              <button onClick={() => setShowProcoreModal(false)} className="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {procoreCompanies.length > 1 && (
+                <div>
+                  <label className="text-xs text-gray-400 uppercase block mb-1">Company</label>
+                  <select
+                    value={procoreCompanyId ?? ''}
+                    onChange={e => setProcoreCompanyId(Number(e.target.value))}
+                    className="w-full bg-blueprint-bg border border-blueprint-grid p-2 text-white text-sm focus:outline-none focus:border-[#ff6b35]"
+                  >
+                    <option value="">Select company...</option>
+                    {procoreCompanies.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {procoreCompanyId && (
+                loadingProcoreProjects ? (
+                  <p className="text-gray-400 text-sm">Loading projects...</p>
+                ) : procoreImportList.length === 0 ? (
+                  <p className="text-gray-400 text-sm">No projects found in this company.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {procoreImportList.map((p: any) => (
+                      <div key={p.id} className="flex items-center justify-between border border-blueprint-grid p-3 hover:border-[#ff6b35]/50 transition-colors">
+                        <div>
+                          <p className="text-sm font-semibold">{p.name}</p>
+                          {p.address && <p className="text-xs text-gray-500 mt-0.5">{p.address}</p>}
+                        </div>
+                        <button
+                          onClick={() => handleProcoreImport(p)}
+                          disabled={importingId === p.id}
+                          className="text-xs px-3 py-1.5 border border-[#ff6b35]/50 text-[#ff6b35] hover:border-[#ff6b35] transition-colors disabled:opacity-40 whitespace-nowrap"
+                        >
+                          {importingId === p.id ? 'Importing...' : linkedProjectIds.has(p.id?.toString()) ? 'Select' : 'Import'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
