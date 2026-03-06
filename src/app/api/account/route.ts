@@ -17,10 +17,6 @@ export async function GET(req: NextRequest) {
       email: true,
       username: true,
       name: true,
-      bio: true,
-      location: true,
-      skills: true,
-      yearsExperience: true,
       role: true,
       subscription: true,
       createdAt: true,
@@ -76,8 +72,7 @@ export async function DELETE(req: NextRequest) {
     // Non-fatal — continue with DB deletion even if disk cleanup fails
   }
 
-  // Delete user — Prisma cascade handles: DailyLog, Project, Post, Comment,
-  // Like, Message, Booking, AudioLog, JobSite, ApiUsageLog
+  // Delete user — Prisma cascade handles: DailyLog, Project, ApiUsageLog, CompanyMember
   await prisma.user.delete({ where: { id: userId } })
 
   return NextResponse.json({

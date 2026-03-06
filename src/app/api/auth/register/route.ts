@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
     const body = await request.json()
-    const { firstName, lastName, email, username, password, skills, yearsExperience } = body
+    const { firstName, lastName, email, username, password } = body
 
     if (!email || !username || !password) {
       return NextResponse.json({ error: 'Email, username, and password are required' }, { status: 400 })
@@ -31,18 +31,12 @@ export async function POST(request: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12)
 
-    const skillsArray = skills
-      ? skills.split(',').map((s: string) => s.trim()).filter(Boolean)
-      : []
-
     const user = await prisma.user.create({
       data: {
         email,
         username,
         passwordHash,
         name: [firstName, lastName].filter(Boolean).join(' ') || username,
-        skills: skillsArray,
-        yearsExperience: yearsExperience ? parseInt(yearsExperience) : null,
         trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
       select: { id: true, email: true, username: true, name: true },

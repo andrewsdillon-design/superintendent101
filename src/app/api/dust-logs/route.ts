@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { fetchLogsFromNotion } from '@/lib/notion'
 import { getUserId } from '@/lib/get-user-id'
 
 export async function GET(req: NextRequest) {
@@ -11,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { notionToken: true, notionDbId: true, subscription: true, trialEndsAt: true },
+    select: { subscription: true, trialEndsAt: true },
   })
 
   const hasAccess =
@@ -23,19 +22,6 @@ export async function GET(req: NextRequest) {
     ? Math.ceil((user.trialEndsAt.getTime() - Date.now()) / 86400000)
     : null
 
-  if (!hasAccess) {
-    return NextResponse.json({ logs: [], notionConnected: false, hasAccess: false, trialDaysLeft: 0 })
-  }
-
-  if (!user?.notionToken || !user?.notionDbId) {
-    return NextResponse.json({ logs: [], notionConnected: false, hasAccess: true, trialDaysLeft })
-  }
-
-  try {
-    const logs = await fetchLogsFromNotion(user.notionToken, user.notionDbId)
-    return NextResponse.json({ logs, notionConnected: true, hasAccess: true, trialDaysLeft })
-  } catch (err: any) {
-    console.error('Notion fetch failed:', err.message)
-    return NextResponse.json({ logs: [], notionConnected: true, hasAccess: true, trialDaysLeft, error: err.message })
-  }
+  // Notion integration removed — return empty state
+  return NextResponse.json({ logs: [], notionConnected: false, hasAccess, trialDaysLeft })
 }
