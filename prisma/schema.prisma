@@ -30,7 +30,7 @@ model User {
   onboarded       Boolean      @default(false)
   defaultProjectId String?
   builderType     String?      // 'RESIDENTIAL' | 'COMMERCIAL'
-  structureModel  String       @default("gpt-4o")  // AI model for structuring transcripts
+  structureModel  String       @default("gpt-5.4")  // AI model for structuring transcripts
   // Email sending (Option A — user's own SMTP)
   emailFromName   String?
   emailFromAddr   String?

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     builderType: user.builderType,
-    structureModel: user.structureModel ?? 'gpt-4o',
+    structureModel: user.structureModel ?? 'gpt-5.4',
     onboarded: user.onboarded,
     defaultProjectId: user.defaultProjectId,
     procoreConnected: !!user.procoreAccessToken,

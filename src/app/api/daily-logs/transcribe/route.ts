@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
     where: { id: userId },
     select: { structureModel: true },
   })
-  const structureModel = userSettings?.structureModel ?? 'gpt-4o'
+  const structureModel = userSettings?.structureModel ?? 'gpt-5.4'
 
   // Validate the client is available for this model
   const structureClient = getStructureClient(structureModel)
