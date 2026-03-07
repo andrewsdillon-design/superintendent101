@@ -131,6 +131,7 @@ model DailyLog {
   date          DateTime @db.Date
   weather       String   @default("")
   crewCounts    Json     @default("{}")   // { "Framers": 4, "Electricians": 2 }
+  crewPermits   Json     @default("{}")   // { "Electricians": "E-2024-123" } — commercial sub permit numbers per trade
   workPerformed String   @db.Text @default("")
   deliveries    String   @db.Text @default("")
   inspections   String   @db.Text @default("")

@@ -96,6 +96,7 @@ interface PushPayload {
   date: Date
   weather: string
   crewCounts: Record<string, number>
+  crewPermits: Record<string, string>  // commercial: permit number per trade
   workPerformed: string
   deliveries: string
   inspections: string
@@ -137,10 +138,19 @@ export async function pushDailyLogToProcore(
     pushed.push('work')
   }
 
-  // Crew / Manpower — one entry per trade
+  // Crew / Manpower — one entry per trade, include sub permit number if present
   for (const [trade, count] of Object.entries(log.crewCounts ?? {})) {
     if (Number(count) > 0) {
-      await push('manpower_logs', { manpower_log: { date: dateStr, party_name: trade, total: Number(count) } })
+      const permit = log.crewPermits?.[trade]
+      const notes = permit ? `Permit: ${permit}` : undefined
+      await push('manpower_logs', {
+        manpower_log: {
+          date: dateStr,
+          party_name: trade,
+          total: Number(count),
+          ...(notes ? { notes } : {}),
+        },
+      })
     }
   }
   if (Object.keys(log.crewCounts ?? {}).length > 0) pushed.push('crew')

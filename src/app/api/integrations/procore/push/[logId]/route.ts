@@ -62,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { logId: stri
       date:          log.date,
       weather:       log.weather ?? '',
       crewCounts:    log.crewCounts as Record<string, number>,
+      crewPermits:   ((log as any).crewPermits ?? {}) as Record<string, string>,
       workPerformed: log.workPerformed,
       deliveries:    log.deliveries,
       inspections:   log.inspections,

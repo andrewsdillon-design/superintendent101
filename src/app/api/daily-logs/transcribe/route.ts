@@ -102,7 +102,8 @@ FIELD MAPPING — FILL THESE JSON FIELDS:
 - "accidents": Any accidents, incidents, or first aid events.
 - "visitors": Any owner visits, inspector visits, architect walkthroughs, or VIP site visits.
 - "weather": Weather conditions observed.
-- "crewCounts": Trades on site with headcounts — e.g. { "Steel Ironworkers": 12, "Electricians": 6, "Plumbers": 4 }
+- "crewCounts": Trades/subcontractors on site with headcounts — e.g. { "Steel Ironworkers": 12, "Electricians": 6, "Plumbers": 4 }
+- "crewPermits": Per-trade permit numbers for subcontractors — e.g. { "Electricians": "E-2024-123", "Plumbers": "P-2024-456" }. Only include trades where a permit number was mentioned. Use {} if none mentioned.
 - "lotNumber": Project identifier or building number if mentioned. Match against active projects.
 - "address": Street address if mentioned, otherwise "".
 - "permitNumber": Permit number if mentioned, otherwise "".
@@ -185,8 +186,8 @@ function buildSystemPrompt(
 
   const isResidential = (builderType || '').toUpperCase() === 'RESIDENTIAL'
 
-  const multiSchema = `{ "multi": true, "logs": [{ "projectHint": "Lot 5", "lotNumber": "Lot 5", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "...", "equipment": "...", "accidents": "...", "visitors": "..." }, ...] }`
-  const singleSchema = `{ "multi": false, "lotNumber": "...", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "...", "equipment": "...", "accidents": "...", "visitors": "..." }`
+  const multiSchema = `{ "multi": true, "logs": [{ "projectHint": "Lot 5", "lotNumber": "Lot 5", "weather": "...", "crewCounts": {}, "crewPermits": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "...", "equipment": "...", "accidents": "...", "visitors": "..." }, ...] }`
+  const singleSchema = `{ "multi": false, "lotNumber": "...", "weather": "...", "crewCounts": {}, "crewPermits": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "...", "equipment": "...", "accidents": "...", "visitors": "..." }`
 
   if (isResidential) {
     return `${RESIDENTIAL_FRAMEWORK}

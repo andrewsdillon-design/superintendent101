@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
         date:          log.date,
         weather:       log.weather,
         crewCounts:    log.crewCounts as Record<string, number>,
+        crewPermits:   (log.crewPermits ?? {}) as Record<string, string>,
         workPerformed: log.workPerformed,
         deliveries:    log.deliveries,
         inspections:   log.inspections,

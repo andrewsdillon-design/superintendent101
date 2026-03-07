@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
     date,
     weather,
     crewCounts,
+    crewPermits,
     workPerformed,
     deliveries,
     inspections,
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest) {
         data: {
           weather: weather?.trim() ? weather : existing.weather,
           crewCounts: crewCounts && Object.keys(crewCounts).length > 0 ? crewCounts : existing.crewCounts,
+          crewPermits: crewPermits && Object.keys(crewPermits).length > 0 ? crewPermits : existing.crewPermits,
           workPerformed: appendText(existing.workPerformed, workPerformed),
           deliveries: appendText(existing.deliveries, deliveries),
           inspections: appendText(existing.inspections, inspections),
@@ -137,6 +139,7 @@ export async function POST(req: NextRequest) {
       date: new Date(date),
       weather: weather ?? '',
       crewCounts: crewCounts ?? {},
+      crewPermits: crewPermits ?? {},
       workPerformed: workPerformed ?? '',
       deliveries: deliveries ?? '',
       inspections: inspections ?? '',
@@ -166,7 +169,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ log }, { status: 201 })
 }
 
-async function pushToProcore(userId: string, log: { id: string; projectId: string | null; date: Date; weather: string; crewCounts: any; workPerformed: string; deliveries: string; inspections: string; issues: string; safetyNotes: string; rfi: string; equipment: string; accidents: string; visitors: string }) {
+async function pushToProcore(userId: string, log: { id: string; projectId: string | null; date: Date; weather: string; crewCounts: any; crewPermits: any; workPerformed: string; deliveries: string; inspections: string; issues: string; safetyNotes: string; rfi: string; equipment: string; accidents: string; visitors: string }) {
   if (!log.projectId) return
 
   const [dbUser, link] = await Promise.all([
@@ -200,6 +203,7 @@ async function pushToProcore(userId: string, log: { id: string; projectId: strin
     date:          log.date,
     weather:       log.weather,
     crewCounts:    log.crewCounts as Record<string, number>,
+    crewPermits:   (log.crewPermits ?? {}) as Record<string, string>,
     workPerformed: log.workPerformed,
     deliveries:    log.deliveries,
     inspections:   log.inspections,
