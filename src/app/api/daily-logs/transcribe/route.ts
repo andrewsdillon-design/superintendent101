@@ -16,7 +16,8 @@ const xai = process.env.XAI_API_KEY
 const MODEL_PRICING: Record<string, { inputPerM: number; outputPerM: number }> = {
   'gpt-4o':              { inputPerM: 2.50,  outputPerM: 10.00 },
   'gpt-4o-mini':         { inputPerM: 0.15,  outputPerM: 0.60  },
-  'grok-4.1-reasoning':  { inputPerM: 5.00,  outputPerM: 15.00 }, // update when xAI publishes official pricing
+  'gpt-5.4':             { inputPerM: 10.00, outputPerM: 30.00 }, // update when OpenAI publishes official pricing
+  'grok-4.1-reasoning':  { inputPerM: 5.00,  outputPerM: 15.00 },
 }
 
 function getStructureClient(model: string): OpenAI | null {

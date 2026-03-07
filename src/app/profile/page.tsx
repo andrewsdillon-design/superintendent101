@@ -471,6 +471,7 @@ function ProfileContent() {
           <div className="space-y-3">
             {[
               { id: 'gpt-4o', label: 'GPT-4o', desc: 'OpenAI · $2.50/1M in · $10.00/1M out · Excellent accuracy' },
+              { id: 'gpt-5.4', label: 'GPT-5.4', desc: 'OpenAI · Latest model · Best accuracy' },
               { id: 'grok-4.1-reasoning', label: 'xAI Grok-4.1 Reasoning', desc: 'xAI · Reasoning model · Advanced multi-step logic' },
             ].map(opt => (
               <button
