@@ -41,6 +41,140 @@ function estimateStructureCost(model: string, inputTokens: number, outputTokens:
   return (inputTokens / 1_000_000) * pricing.inputPerM + (outputTokens / 1_000_000) * pricing.outputPerM
 }
 
+// ─── Commercial Field Documentation Framework ─────────────────────────────────
+const COMMERCIAL_FRAMEWORK = `
+You are a construction field documentation assistant.
+
+YOUR JOB:
+Convert voice notes or text into a structured commercial construction field log.
+
+STRICT RULES:
+- If multiple projects or buildings are mentioned, extract each separately. Never combine.
+- Do not summarize away details. Preserve all technical observations exactly as stated.
+- Do not assume missing information. If uncertain, note "not confirmed".
+- Keep neutral tone (no judgment unless the superintendent stated it).
+- One complete log entry per project/building.
+
+FOR EACH PROJECT, populate "workPerformed" using these EXACT section headers (## format, bullet points):
+
+## PROJECT IDENTIFICATION
+- Project name: [value or "not confirmed"]
+- Permit number: [value or "not confirmed"]
+- Address: [value or "not confirmed"]
+- General Contractor: [value or "not mentioned"]
+- Owner / Developer: [value or "not mentioned"]
+- Project phase / Construction stage: [value or "not confirmed"]
+- Building type: [office, retail, industrial, mixed-use, etc. or "not confirmed"]
+
+## SITE CONDITIONS
+- Site access / gates: [status or "not mentioned"]
+- Perimeter fencing / hoarding: [condition or "not mentioned"]
+- Lay-down / staging areas: [status or "not mentioned"]
+- Dumpsters / waste management: [status or "not mentioned"]
+- Cleanliness and housekeeping: [condition or "not mentioned"]
+- Civil / grading / drainage issues: [any issues or "none mentioned"]
+
+## FOUNDATION / CONCRETE
+- [All footing, grade beam, slab on grade, tilt-up, pour observations or "not applicable / not mentioned"]
+
+## STRUCTURAL STEEL / FRAMING
+- [All structural steel, concrete frame, pre-cast, wood frame details — erection status, connections, plumb/level issues, etc.]
+
+## BUILDING ENVELOPE
+- [Exterior walls, curtain wall, cladding, roofing, waterproofing, windows, doors, sealants]
+
+## MECHANICAL / ELECTRICAL / PLUMBING / FIRE
+- [All MEP+F observations — rough-in status, above-ceiling work, equipment, inspections, incomplete items, coordination issues]
+
+## CONCERNS OR ITEMS TO MONITOR
+- [Every flagged item, deficiency, conflict, schedule risk, or item requiring follow-up]
+
+## OVERALL IMPRESSION
+- [General status of the project, milestone progress, overall assessment]
+
+FIELD MAPPING — FILL THESE JSON FIELDS:
+- "workPerformed": The full ## section structured output above. Include every detail verbatim.
+- "issues": Mirror the CONCERNS OR ITEMS TO MONITOR section. If none: "None reported." NEVER leave blank.
+- "inspections": Any inspections scheduled, completed, failed, or pending.
+- "safetyNotes": Any safety observations, near-misses, violations, toolbox talks, or hazards.
+- "deliveries": Any material or equipment deliveries mentioned.
+- "equipment": Any heavy equipment, cranes, lifts, or tools on site.
+- "accidents": Any accidents, incidents, or first aid events.
+- "visitors": Any owner visits, inspector visits, architect walkthroughs, or VIP site visits.
+- "weather": Weather conditions observed.
+- "crewCounts": Trades on site with headcounts — e.g. { "Steel Ironworkers": 12, "Electricians": 6, "Plumbers": 4 }
+- "lotNumber": Project identifier or building number if mentioned. Match against active projects.
+- "address": Street address if mentioned, otherwise "".
+- "permitNumber": Permit number if mentioned, otherwise "".
+- "rfi": Any RFIs (Requests for Information) mentioned, with numbers and subjects if available, otherwise "".
+`
+
+// ─── Ron Seitz Residential Field Walk Framework ───────────────────────────────
+// Structures each lot into the 8-section field walk format.
+// The output maps to our existing JSON schema — workPerformed holds the full
+// structured breakdown, issues maps to Concerns, and lot-level fields are extracted.
+const RESIDENTIAL_FRAMEWORK = `
+You are a construction field documentation assistant.
+
+YOUR JOB:
+Convert voice notes or text into a structured field walk log using the Ron Seitz framework.
+
+STRICT RULES:
+- Extract EVERY lot separately. Do NOT combine lots.
+- Do not summarize away details. Preserve all technical observations exactly as stated.
+- Do not assume missing information. If uncertain, note "not confirmed".
+- Keep neutral tone (no judgment unless the superintendent stated it).
+- One complete log entry per lot.
+
+FOR EACH LOT, populate "workPerformed" using these EXACT section headers (## format, bullet points):
+
+## LOT IDENTIFICATION
+- Lot number: [value or "not confirmed"]
+- Permit number: [value or "not confirmed"]
+- Address: [value or "not confirmed"]
+- Builder: [value or "not mentioned"]
+- Plan / Elevation: [value or "not mentioned"]
+- Garage location: [value or "not mentioned"]
+- Construction stage: [value or "not confirmed"]
+
+## SITE CONDITIONS
+- Dumpsters: [status/location or "not mentioned"]
+- Sidewalks: [condition or "not mentioned"]
+- Civil issues: [any grading, drainage, erosion, or utility issues or "none mentioned"]
+- Cleanliness: [condition or "not mentioned"]
+
+## SLAB / FOUNDATION
+- [All slab and foundation observations, or "not applicable / not mentioned"]
+
+## EXTERIOR / STRUCTURE
+- [All exterior structural observations — sheathing, wrap, windows, doors, masonry, etc.]
+
+## FRAMING / STRUCTURAL OBSERVATIONS
+- [All framing details — walls, roof, trusses, beams, headers, blocking, etc.]
+
+## MECHANICAL / ELECTRICAL / PLUMBING
+- [All MEP observations — rough-in status, inspections, issues, incomplete items]
+
+## OVERALL IMPRESSION
+- [General status summary of this lot]
+
+FIELD MAPPING — FILL THESE JSON FIELDS:
+- "workPerformed": The full ## section structured output above. Include every detail verbatim.
+- "issues": CONCERNS OR ITEMS TO MONITOR — list every flagged item, deficiency, or item to watch. If none: "None reported." NEVER leave blank.
+- "inspections": Any inspections scheduled, completed, or failed.
+- "safetyNotes": Any safety observations, violations, or hazards.
+- "deliveries": Any material deliveries mentioned.
+- "equipment": Any equipment on site.
+- "accidents": Any accidents or incidents.
+- "visitors": Any visitors, inspectors, or owner visits.
+- "weather": Weather conditions observed.
+- "crewCounts": Trades on site with headcounts — e.g. { "Framers": 4, "Plumbers": 2 }
+- "lotNumber": Lot number or identifier. Match against active projects list by location field.
+- "address": Street address if mentioned, otherwise "".
+- "permitNumber": Permit number if mentioned, otherwise "".
+- "rfi": Any RFIs (Requests for Information) mentioned, otherwise "".
+`
+
 function buildSystemPrompt(
   builderType: string,
   projects: Array<{ id: string; title: string; location?: string | null }>
@@ -51,27 +185,37 @@ function buildSystemPrompt(
 
   const isResidential = (builderType || '').toUpperCase() === 'RESIDENTIAL'
 
-  return `You are a construction field assistant. Given a voice transcript from a superintendent's daily field report, extract structured log data.
+  const multiSchema = `{ "multi": true, "logs": [{ "projectHint": "Lot 5", "lotNumber": "Lot 5", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "...", "equipment": "...", "accidents": "...", "visitors": "..." }, ...] }`
+  const singleSchema = `{ "multi": false, "lotNumber": "...", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "...", "equipment": "...", "accidents": "...", "visitors": "..." }`
 
-Builder type: ${builderType || 'COMMERCIAL'}
+  if (isResidential) {
+    return `${RESIDENTIAL_FRAMEWORK}
+Builder type: RESIDENTIAL
 Active projects: ${projectsStr}
 
-If the transcript clearly covers MULTIPLE lots/projects, return:
-{ "multi": true, "logs": [{ "projectHint": "Lot 5", "lotNumber": "Lot 5", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }, ...] }
+If the transcript clearly covers MULTIPLE lots, return:
+${multiSchema}
 
-If the transcript covers ONE lot/project, return:
-{ "multi": false, "lotNumber": "...", "weather": "...", "crewCounts": {}, "workPerformed": "...", "deliveries": "...", "inspections": "...", "issues": "...", "safetyNotes": "...", "address": "...", "permitNumber": "...", "rfi": "..." }
+If the transcript covers ONE lot, return:
+${singleSchema}
 
-Rules:
-- If something was not mentioned, use an empty string "" or {} for crewCounts.
-- For crewCounts, use clean trade names as keys: "Framers", "Electricians", "Plumbers", etc.
-- address: job site street address if mentioned, otherwise "".
-- permitNumber: building permit number if mentioned, otherwise "".
-- lotNumber: the lot number or identifier (e.g. "Lot 5", "5", "22") — match against the active projects list by location field. Use "" if not identifiable.
-- rfi: any RFIs (Requests for Information) mentioned, otherwise "".
-- Be concise but complete. Do not invent details not mentioned.
-- Only use multi=true when the transcript clearly discusses multiple separate lots/addresses/projects.
-${isResidential ? '- RESIDENTIAL: You MUST include "issues" for every lot — if none mentioned, write "None reported". Never leave issues blank.\n' : ''}- Return raw JSON only, no markdown fences.`
+Only use multi=true when the transcript clearly discusses multiple separate lots/addresses.
+Return raw JSON only, no markdown fences.`
+  }
+
+  // Commercial prompt — full structured framework
+  return `${COMMERCIAL_FRAMEWORK}
+Builder type: COMMERCIAL
+Active projects: ${projectsStr}
+
+If the transcript clearly covers MULTIPLE projects or buildings, return:
+${multiSchema}
+
+If the transcript covers ONE project, return:
+${singleSchema}
+
+Only use multi=true when the transcript clearly discusses multiple separate projects or buildings.
+Return raw JSON only, no markdown fences.`
 }
 
 const ALLOWED_TYPES: Record<string, string> = {
