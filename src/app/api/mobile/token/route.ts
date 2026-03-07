@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 
 const SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET ?? '')
-const EXPIRES_IN = '30d'
+const EXPIRES_IN = '365d'
 
 export async function POST(req: NextRequest) {
   try {
